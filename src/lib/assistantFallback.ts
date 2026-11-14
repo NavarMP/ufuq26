@@ -205,12 +205,89 @@ export function getFallbackAssistantReply(
     return `The camp features a comprehensive 7-day curriculum covering higher education pathways, leadership development, and character building. Please check the 'Schedule' section for day-by-day details.`;
   }
 
+  // Contact / Support / Phone / WhatsApp / Email
+  if (
+    q.includes('contact') ||
+    q.includes('support') ||
+    q.includes('phone') ||
+    q.includes('call') ||
+    q.includes('whatsapp') ||
+    q.includes('email') ||
+    q.includes('mail') ||
+    q.includes('help') ||
+    q.includes('reach') ||
+    q.includes('ബന്ധപ്പെടുക') ||
+    q.includes('ഫോൺ') ||
+    q.includes('വാട്സാപ്പ്') ||
+    q.includes('ഇമെയിൽ') ||
+    q.includes('സഹായം') ||
+    q.includes('اتصال') ||
+    q.includes('هاتف') ||
+    q.includes('واتساب') ||
+    q.includes('بريد')
+  ) {
+    if (lang === 'ml') {
+      return `UFUQ ’26 സംഘാടക സമിതിയുമായി ബന്ധപ്പെടാനുള്ള വിവരങ്ങൾ:\n• ഫോൺ / വാട്സാപ്പ്: +91 90745 25205\n• ഇമെയിൽ: alathurpadidars@gmail.com\n• ഔദ്യോഗിക വെബ്‌സൈറ്റ്: https://alathurpadidars.in/`;
+    }
+    if (lang === 'ar') {
+      return `بيانات الاتصال الرسمية باللجنة المنظمة لمخيم UFUQ ’26:\n• الهاتف وواتساب: +91 90745 25205\n• البريد الإلكتروني: alathurpadidars@gmail.com\n• الموقع الرسمي: https://alathurpadidars.in/`;
+    }
+    return `You can reach the ADSA UFUQ ’26 organizing desk directly via:\n• Phone & WhatsApp Helpline: +91 90745 25205\n• Email: alathurpadidars@gmail.com\n• Official Website: https://alathurpadidars.in/`;
+  }
+
+  // Alathurpadi Dars & Heritage
+  if (
+    q.includes('alathurpadi') ||
+    q.includes('dars') ||
+    q.includes('heritage') ||
+    q.includes('history') ||
+    q.includes('ആലത്തുർപടി') ||
+    q.includes('അലത്തൂർപ്പടി') ||
+    q.includes('ദർസ്') ||
+    q.includes('പാരമ്പര്യം') ||
+    q.includes('ചരിത്രം') ||
+    q.includes('العلثورپادي') ||
+    q.includes('درس') ||
+    q.includes('تراث') ||
+    q.includes('تاريخ')
+  ) {
+    if (lang === 'ml') {
+      return `മലപ്പുറം മേൽമുറിയിലെ അലത്തൂർപ്പടി ദർസ് പരമ്പരാഗത ഇസ്‌ലാമിക വൈജ്ഞാനിക ശ്രേണിയെ കാത്തുസൂക്ഷിക്കുന്ന മലബാറിലെ പ്രമുഖ ദർസ് കേന്ദ്രമാണ്. ദർസ് ചരിത്രത്തെക്കുറിച്ചും 39+ സുഫ്ഫ ദർസ് ശൃംഖലയെക്കുറിച്ചും കൂടുതൽ അറിയാൻ സമഗ്ര 'About' പേജ് (/about) സന്ദർശിക്കുക.`;
+    }
+    if (lang === 'ar') {
+      return `تعد دار العلثورپادي في ميلموري بمحافظة ملابورم صرحاً إسلامياً عريقاً يحفظ سلسلة الإسناد والتعليم التقليدي الأصيل. يمكنك استكشاف تاريخ الدار وشبكة معاهد صفا من خلال الصفحة التعريفية الشاملة (/about).`;
+    }
+    return `Alathurpadi Dars in Melmuri, Malappuram is a historic seat of classical Islamic learning in Kerala, preserving the unbroken chain of traditional Halaqah scholarship. Explore the full history and 39+ Dars directory on our dedicated About page at /about.`;
+  }
+
+  // SUHBA / Mentorship Fellowship
+  if (
+    q.includes('suhba') ||
+    q.includes('suhbah') ||
+    q.includes('fellowship') ||
+    q.includes('mentorship') ||
+    q.includes('സുഹ്ബ') ||
+    q.includes('മെന്റർഷിപ്പ്') ||
+    q.includes('സഹവാസം') ||
+    q.includes('صحبة') ||
+    q.includes('إرشاد') ||
+    q.includes('مرافقة')
+  ) {
+    if (lang === 'ml') {
+      return `‘സുഹ്ബ’ (صُحْبَة) എന്നാൽ ഗുരുശിഷ്യ ബന്ധത്തിലെയും സഹപാഠി സൗഹൃദത്തിലെയും ആത്മീയ സാമീപ്യവും സ്വഭാവ സംസ്കരണവുമാണ്. UFUQ ’26-ൽ ഓരോ വിദ്യാർത്ഥിയെയും സർവ്വകലാശാലകളിൽ പഠിക്കുന്ന പൂർവ്വവിദ്യാർത്ഥികളുമായി കണ്ണിചേർക്കുന്ന ആജീവനാന്ത മെന്റർഷിപ്പ് സർക്കിളായി ഇത് മാറുന്നു. കൂടുതൽ വിവരങ്ങൾക്ക് /about#suhba സന്ദർശിക്കുക.`;
+    }
+    if (lang === 'ar') {
+      return `الصُّحْبَة هي فلسفة التربية والملازمة الروحية في تراث الدار التي تحول العلم إلى سمت وخلق. وفي معسكر أُفُق، تمثل الصُّحْبَة حلقة إرشاد دائمة تربط الخريجين برفقائهم في كبرى الجامعات. لمزيد من التفاصيل زر /about#suhba.`;
+    }
+    return `SUHBA (صُحْبَة) is the sacred Islamic tradition of spiritual companionship and character osmosis between teacher and student, and among scholarly brothers. In UFUQ ’26, it forms a lifelong mentorship circle pairing graduating scholars with university alumni. Learn more at /about#suhba.`;
+  }
+
   // General default response
   if (lang === 'ml') {
-    return `ഔദ്യോഗിക UFUQ ’26 വിവരങ്ങളുടെ അടിസ്ഥാനത്തിലാണ് ഞാൻ മറുപടി നൽകുന്നത്. കൂടുതൽ വിശദാംശങ്ങൾക്കായി ദയവായി ADSA സംഘാടകരുമായി ബന്ധപ്പെടുക അല്ലെങ്കിൽ https://alathurpadidars.in സന്ദർശിക്കുക.`;
+    return `ഔദ്യോഗിക UFUQ ’26 വിവരങ്ങളുടെ അടിസ്ഥാനത്തിലാണ് ഞാൻ മറുപടി നൽകുന്നത്. കൂടുതൽ വിശദാംശങ്ങൾക്കായി ദയവായി ADSA സംഘാടകരുമായി ബന്ധപ്പെടുക (ഫോൺ/വാട്സാപ്പ്: +91 90745 25205, ഇമെയിൽ: alathurpadidars@gmail.com) അല്ലെങ്കിൽ https://alathurpadidars.in സന്ദർശിക്കുക.`;
   }
   if (lang === 'ar') {
-    return `أجيب على الاستفسارات بناءً على السجلات الرسمية المؤكدة لمخيم UFUQ ’26. للمزيد من التفاصيل، يرجى التواصل مع اللجنة المنظمة (ADSA) أو زيارة https://alathurpadidars.in/.`;
+    return `أجيب على الاستفسارات بناءً على السجلات الرسمية المؤكدة لمخيم UFUQ ’26. للمزيد من التفاصيل، يرجى التواصل مع اللجنة المنظمة (الهاتف/واتساب: +91 90745 25205، البريد: alathurpadidars@gmail.com) أو زيارة https://alathurpadidars.in/.`;
   }
-  return `I answer questions strictly based on confirmed UFUQ ’26 event records. For queries beyond published details, please reach out directly to the ADSA organizing team via the Contact section or visit https://alathurpadidars.in/.`;
+  return `I answer questions strictly based on confirmed UFUQ ’26 event records. For queries beyond published details, please reach out directly to the ADSA organizing team via the Contact section (Phone/WhatsApp: +91 90745 25205, Email: alathurpadidars@gmail.com) or visit https://alathurpadidars.in/.`;
 }

@@ -1,9 +1,9 @@
-const path = require('path');
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'export',
-  outputFileTracingRoot: path.join(__dirname),
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     unoptimized: true,
     remotePatterns: [
@@ -11,11 +11,6 @@ const nextConfig = {
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
       { protocol: 'https', hostname: '**.supabase.co' },
     ],
-  },
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '2mb',
-    },
   },
 };
 

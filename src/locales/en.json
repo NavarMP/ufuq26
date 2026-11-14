@@ -7,8 +7,17 @@
     "register": "Register",
     "faq": "FAQ",
     "contact": "Contact",
+    "guide": "Interactive Guide",
     "search": "Search",
-    "admin": "Admin"
+    "preferences": "Preferences",
+    "admin": "Admin",
+    "login": "Login",
+    "darsPortal": "Dars Portal",
+    "adminPortal": "Admin Portal",
+    "unifiedLoginTitle": "Portal Access",
+    "unifiedLoginDesc": "Select your portal to proceed",
+    "darsDesc": "SUFFA Dars coordinators & verification",
+    "adminDesc": "Camp organizers & administrative control"
   },
   "hero": {
     "arabicTitle": "أُفُق",
@@ -42,7 +51,12 @@
     "filterByCategory": "Filter by category",
     "addToCalendar": "Add to Calendar",
     "setReminder": "Set Reminder",
-    "reminderSet": "Reminder set!"
+    "reminderSet": "Reminder set!",
+    "monthGrid": "Month Grid",
+    "weekMatrix": "7-Day Matrix",
+    "sessionTimeline": "Session Timeline",
+    "hijriDates": "Hijri Dates",
+    "addCamp": "Add Camp (Dec 24–30)"
   },
   "guests": {
     "title": "Guests & Speakers",
@@ -55,25 +69,19 @@
     "subtitle": "Secure your place at UFUQ '26",
     "fullName": "Full Name",
     "email": "Email Address",
-    "phone": "Phone Number",
-    "darsYear": "Year of Study at Dars",
-    "institution": "Current Institution",
-    "higherStudyPlan": "Higher Study Plans",
-    "dietary": "Dietary Requirements",
-    "emergencyContact": "Emergency Contact Name",
-    "emergencyPhone": "Emergency Contact Phone",
-    "agreeTerms": "I agree to the camp guidelines and terms",
+    "phone": "Phone / WhatsApp Number",
+    "dars": "SUFFA Dars Institution",
+    "searchDars": "Search by Dars name, Malayalam, Mudarris, or Reg No...",
     "submit": "Submit Registration",
     "submitting": "Submitting...",
     "success": "Registration submitted successfully!",
-    "successMessage": "Thank you for registering for UFUQ '26. You will receive a confirmation email shortly.",
+    "successMessage": "Thank you for registering for UFUQ '26. Keep your reference ID safe for admission at camp.",
     "error": "Registration failed. Please try again.",
-    "duplicate": "A registration with this email already exists.",
+    "duplicate": "A registration with this phone number or email already exists.",
     "closed": "Registration is currently closed.",
     "required": "This field is required",
     "invalidEmail": "Please enter a valid email address",
-    "invalidPhone": "Please enter a valid phone number",
-    "mustAgree": "You must agree to the terms"
+    "invalidPhone": "Please enter a valid 10-digit phone number"
   },
   "faq": {
     "title": "Frequently Asked Questions",
@@ -84,11 +92,24 @@
   "contact": {
     "title": "Contact & Support",
     "subtitle": "We're here to help",
+    "description": "Have questions about UFUQ ’26? Reach out directly to the ADSA organizing committee via phone, WhatsApp, or email.",
     "getInTouch": "Get in Touch",
     "followUs": "Follow Us",
     "location": "Location",
     "directions": "Get Directions",
-    "viewOnMap": "View on Map"
+    "viewOnMap": "View on Map",
+    "phone": "Phone Helpline",
+    "callNow": "Call Us",
+    "whatsapp": "WhatsApp Support",
+    "chatOnWhatsapp": "Chat on WhatsApp",
+    "email": "Email Inquiries",
+    "sendEmail": "Send an Email",
+    "quickAssistance": "Direct Assistance",
+    "availableDesc": "ADSA student desk is available to assist you.",
+    "socialChannels": "Official Channels",
+    "copied": "Copied!",
+    "copyPhone": "Copy Phone Number",
+    "copyEmail": "Copy Email"
   },
   "theme": {
     "light": "Light",
@@ -149,5 +170,157 @@
     "unmute": "Unmute audio",
     "spectrum": "Live Audio Spectrum",
     "autoplayHint": "Click anywhere to enable ambient sound"
+  },
+  "share": {
+    "title": "Share UFUQ ’26",
+    "subtitle": "Spread the word & inspire the next horizon",
+    "nativeShare": "Share via Device",
+    "copyLink": "Copy Link",
+    "copied": "Link copied to clipboard!",
+    "tabs": {
+      "direct": "Direct Share",
+      "qr": "QR Code",
+      "story": "Story Card Studio",
+      "embed": "Embed Code"
+    },
+    "story": {
+      "heading": "Visual Story & Card Generator",
+      "subheading": "Generate high-resolution cards for Instagram Stories & WhatsApp Status",
+      "theme": "Select Theme",
+      "horizon": "Camp Horizon",
+      "pass": "Attendee Digital Pass",
+      "session": "Session Spotlight",
+      "guest": "Speaker Spotlight",
+      "format": "Format",
+      "formatStory": "Story (9:16)",
+      "formatFeed": "Post (16:9)",
+      "download": "Download PNG",
+      "copyImage": "Copy Image",
+      "copiedImage": "Image copied to clipboard!",
+      "shareStory": "Share Card",
+      "generating": "Rendering poster..."
+    },
+    "qr": {
+      "scanHint": "Scan with any smartphone camera to visit the camp page instantly",
+      "download": "Download QR Code (PNG)"
+    },
+    "embed": {
+      "heading": "Website Embed Badge",
+      "subheading": "Paste this HTML snippet into any SUFFA Dars or institutional website",
+      "copy": "Copy Embed Code",
+      "copied": "Embed code copied!"
+    },
+    "shareCamp": "Share Camp",
+    "shareSession": "Share Session",
+    "shareSpeaker": "Share Speaker",
+    "sharePass": "Share Digital Pass",
+    "preview": {
+      "quickPreview": "Quick Preview",
+      "viewDetails": "View Full Details",
+      "addToCalendar": "Add to Calendar"
+    }
+  },
+  "aboutPage": {
+    "badge": "Dedicated About Experience",
+    "backToHome": "Back to Camp Home",
+    "breadcrumb": "About UFUQ '26",
+    "hero": {
+      "arabicSub": "رحلة العلم والانتقال نحو الآفاق المعاصرة",
+      "tagline": "The Sanctuary of Sacred Learning & The Horizon of Tomorrow",
+      "description": "Step inside the story of Alathurpadi Dars, the guiding light of our respected Ustads, the fraternities of ADSA and SUFFA, the sacred bond of Suhbah, and the transformative 7-day journey of Camp UFUQ ’26.",
+      "exploreHeritage": "Explore Heritage",
+      "exploreCamp": "Camp Curriculum"
+    },
+    "darsHeritage": {
+      "badge": "Centuries of Sacred Transmission",
+      "title": "Alathurpadi Dars: The Seat of Classical Scholarship",
+      "subtitle": "A living sanctuary in Malabar preserving the unbroken chain of traditional Islamic learning.",
+      "description": "For decades, Alathurpadi Dars in Melmuri, Malappuram has stood as an illustrious beacon of classical Islamic episteme. Far more than a classroom, a Dars is an immersive sanctuary where students reside alongside their masters, reading the great classical treatises—from Tafsir al-Baydawi and Sahih al-Bukhari to Jam' al-Jawami', Mukhtasar al-Ma'ani, and Ihya' 'Ulum al-Din—cultivating spiritual devotion, humility, and moral excellence.",
+      "feature1Title": "Sanctuary of Halaqah",
+      "feature1Desc": "Concentric circles of inquiry and deep contemplation under master scholars.",
+      "feature2Title": "Holistic Residential Ethos",
+      "feature2Desc": "Living alongside teachers, infusing every hour of day and night with sacred etiquette.",
+      "feature3Title": "Unbroken Isnad",
+      "feature3Desc": "Preserving authentic scholastic lineages connected across generations.",
+      "quote": "“In the Dars, learning is not merely an intellectual pursuit; it is the molding of the human soul in the presence of illuminated teachers.”"
+    },
+    "leadership": {
+      "badge": "Spiritual & Academic Guidance",
+      "title": "The Respected Ustads",
+      "subtitle": "Venerated scholars who illuminate the path of knowledge and wisdom.",
+      "name": "Ustad Dr. C K Abdurahman Faizy Aripra",
+      "role": "Mudarris, Patron & Spiritual Guide — Alathurpadi Dars",
+      "bio": "A revered scholar of profound intellect and spiritual presence, Ustad Dr. C K Abdurahman Faizy embodies the rare synthesis of traditional mastery and contemporary academic rigor. Holding a doctorate alongside his deep traditional credentials, he has guided generations of students to navigate both sacred sciences and university disciplines with unwavering ethical integrity.",
+      "quote": "“Knowledge without ethical roots is fragile; with Ilm, our scholars stand prepared for any challenge the world presents.”",
+      "quoteSource": "From the blessing for UFUQ ’26"
+    },
+    "pillars": {
+      "badge": "The Twin Pillars of Action",
+      "title": "ADSA & SUFFA Fraternal Powerhouse",
+      "adsaTitle": "Alathurpadi Dars Students Association (ADSA)",
+      "adsaRole": "The Official Organizer & Alumni Council",
+      "adsaDesc": "The official governing body unifying active students and accomplished alumni. ADSA spearheads academic conferences, welfare initiatives, scholarly publications, higher education guidance, and major landmark transitions like UFUQ ’26.",
+      "suffaTitle": "SUFFA Dars",
+      "suffaRole": "Scholars Union For Fundamental Activities",
+      "suffaDesc": "The heartbeat of daily student life. SUFFA organizes research circles, debates, cultural symposia, multilingual literary wings, and community welfare, uniting 39+ affiliated Dars institutions across Kerala.",
+      "portalLink": "Access SUFFA Dars Portal",
+      "websiteLink": "Visit Official Site"
+    },
+    "suhba": {
+      "badge": "Sacred Fellowship & Mentorship",
+      "title": "The Philosophy of SUHBA (صُحْبَة)",
+      "subtitle": "Companionship that transforms knowledge from texts into lived character.",
+      "desc": "In classical Islamic learning, knowledge cannot be transmitted purely through ink and pages. It requires Suhbah—the sacred companionship, osmosis of character, and personal guidance between teacher and student, and between scholarly brothers. UFUQ ’26 carries this timeless concept into modern academia.",
+      "dim1Title": "Suhbah with the Master (Ustad)",
+      "dim1Desc": "Absorbing character, humility, and adab directly from the presence of saintly scholars.",
+      "dim2Title": "Suhbah in the Halqa (Brothers)",
+      "dim2Desc": "Enduring companionship on the dars mats, night-vigil reflections, and shared scholastic struggles.",
+      "dim3Title": "Suhbah in Higher Studies (Mentors)",
+      "dim3Desc": "UFUQ’s perpetual mentorship circle pairing graduating scholars with alumni in premier universities.",
+      "dim4Title": "Suhbah with Society (Service)",
+      "dim4Desc": "Living as an ethical compass in the wider world, serving humanity with mercy and illumination."
+    },
+    "campVision": {
+      "badge": "Transition & Leadership",
+      "title": "UFUQ ’26: The 7-Day Horizon Matrix",
+      "subtitle": "Bridging sacred tradition with university excellence and global impact.",
+      "desc": "December 24–30, 2026. A 7-day intensive residential bootcamp designed specifically for graduating SUFFA scholars.",
+      "day1": "Orientation & Cohort Identity",
+      "day2": "University Systems & CUET Pathways",
+      "day3": "Epistemology & Critical Thinking",
+      "day4": "Academic English & Research Writing",
+      "day5": "National & Global Scholarships",
+      "day6": "Public Speaking & Ethical Leadership",
+      "day7": "Goal Blueprinting, Valedictory & Du’a"
+    },
+    "darsNetwork": {
+      "badge": "The Sister Institutions",
+      "title": "The 39+ SUFFA Dars Confederation",
+      "subtitle": "Explore the extensive network of Dars institutions collaborating under SUFFA.",
+      "searchPlaceholder": "Search by Dars name, Mudarris, or Reg No...",
+      "allDistricts": "All Districts",
+      "registeredDars": "Affiliated Institutions",
+      "leadInstitution": "Lead Center: Alathurpadi Dars (SDC01)",
+      "callMudarris": "Contact",
+      "regCode": "Reg"
+    },
+    "digitalCraft": {
+      "badge": "Engineering Excellence",
+      "title": "The Digital Experience & Web App",
+      "subtitle": "Crafted with cutting-edge technology, accessible ergonomics, and acoustic warmth.",
+      "stackDesc": "Engineered on Next.js 15 App Router, React 19, TypeScript, and Tailwind CSS with high-performance static delivery on Firebase Hosting.",
+      "featureAudio": "Ambient soundscape player with real-time Web Audio API frequency spectrum canvas.",
+      "featureLang": "Complete trilingual engine (English, Malayalam, Arabic) with native RTL typography and alignment.",
+      "featurePortals": "Dual Portal architecture with dedicated verification for SUFFA Dars coordinators and organizers.",
+      "featureAssistant": "AI-powered camp assistant with serverless Gemini API and intelligent client-side fallback.",
+      "featureOffline": "Progressive Web App (PWA) offline banner, install prompts, and keyboard-first Command Palette (⌘K)."
+    },
+    "cta": {
+      "title": "Step Forward to the Horizon",
+      "desc": "Be part of the defining transition camp for traditional scholars. Registration is open for eligible SUFFA Dars students.",
+      "registerBtn": "Register for UFUQ ’26",
+      "scheduleBtn": "Explore Full Schedule",
+      "contactBtn": "Contact ADSA Committee"
+    }
   }
 }

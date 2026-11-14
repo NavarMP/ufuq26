@@ -1,8 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { EventInfo, ScheduleSession, Guest, FAQ, Registration, RegistrationField, AudioTrack } from '@/types';
+import { EventInfo, ScheduleSession, Guest, FAQ, Registration, RegistrationField, AudioTrack, SuffaDars, DarsAccount } from '@/types';
 import { initialEventInfo, initialScheduleSessions, initialGuests, initialFAQs, defaultRegistrationFields, initialAudioTracks } from '@/lib/initialData';
+import { initialDarsList } from '@/lib/darsData';
+import { initialDarsAccounts } from '@/lib/initialDarsAccounts';
+import { normalizePhone, formatDisplayPhone, generateDarsPassword } from '@/lib/authHelpers';
+import { ensureRegistrationCode, generateRegistrationCode } from '@/lib/regCodeGenerator';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
 
@@ -18,6 +22,7 @@ interface EventContextType {
   
   // Public actions
   submitRegistration: (data: Omit<Registration, 'id' | 'submittedAt' | 'status'>) => Promise<{ success: boolean; id?: string; error?: string }>;
+  findRegistration: (query: string) => Promise<{ found: boolean; registration?: Registration; message?: string }>;
   
   // Admin actions
   updateEventInfo: (info: Partial<EventInfo>) => Promise<void>;
@@ -44,11 +49,39 @@ interface EventContextType {
   deleteAudioTrack: (id: string) => Promise<void>;
   reorderAudioTracks: (tracks: AudioTrack[]) => Promise<void>;
 
+  // SUFFA Dars CRUD
+  darsList: SuffaDars[];
+  addDars: (dars: Omit<SuffaDars, 'id'> & { id?: string }) => Promise<void>;
+  updateDars: (id: string, updates: Partial<SuffaDars>) => Promise<void>;
+  deleteDars: (id: string) => Promise<void>;
+  resetDarsToDefault: () => Promise<void>;
+
+  // Dars Logins & Accounts CRUD (Admin)
+  darsAccounts: DarsAccount[];
+  addDarsAccount: (account: DarsAccount) => Promise<void>;
+  updateDarsAccount: (id: string, updates: Partial<DarsAccount>) => Promise<void>;
+  deleteDarsAccount: (id: string) => Promise<void>;
+  seedDarsAccounts: () => Promise<{ count: number; seeded: DarsAccount[] }>;
+  exportDarsCredentialsCSV: () => void;
+
+  // Student CRUD for Dars Coordinators
+  addStudentForDars: (student: Omit<Registration, 'id' | 'submittedAt'>) => Promise<{ success: boolean; id?: string; error?: string }>;
+  updateStudentForDars: (id: string, updates: Partial<Registration>) => Promise<void>;
+  deleteStudentForDars: (id: string) => Promise<void>;
+
   // Registrations Admin
   fetchRegistrations: () => Promise<void>;
+  addRegistration: (data: Omit<Registration, 'id' | 'submittedAt'> & { id?: string }) => Promise<{ success: boolean; id?: string; error?: string }>;
+  updateRegistration: (id: string, updates: Partial<Registration>) => Promise<void>;
   updateRegistrationStatus: (id: string, status: 'pending' | 'confirmed' | 'cancelled') => Promise<void>;
+  archiveRegistration: (id: string, reason?: string) => Promise<void>;
+  unarchiveRegistration: (id: string) => Promise<void>;
   deleteRegistration: (id: string) => Promise<void>;
-  exportRegistrationsCSV: () => void;
+  bulkUpdateRegistrationStatus: (ids: string[], status: 'pending' | 'confirmed' | 'cancelled') => Promise<void>;
+  bulkArchiveRegistrations: (ids: string[]) => Promise<void>;
+  bulkUnarchiveRegistrations: (ids: string[]) => Promise<void>;
+  bulkDeleteRegistrations: (ids: string[]) => Promise<void>;
+  exportRegistrationsCSV: (regsToExport?: Registration[] | unknown, filename?: string) => void;
 
   // Reset to initial
   resetToDefaultData: () => void;
@@ -64,6 +97,8 @@ const STORAGE_KEYS = {
   REGISTRATIONS: 'ufuq_registrations_v1',
   FIELDS: 'ufuq_reg_fields_v1',
   AUDIO_TRACKS: 'ufuq_audio_tracks_v1',
+  DARS: 'ufuq_dars_v1',
+  DARS_ACCOUNTS: 'ufuq_dars_accounts_v1',
 };
 
 export function EventProvider({ children }: { children: React.ReactNode }) {
@@ -72,6 +107,8 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   const [guests, setGuests] = useState<Guest[]>(initialGuests);
   const [faqs, setFaqs] = useState<FAQ[]>(initialFAQs);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [darsList, setDarsList] = useState<SuffaDars[]>(initialDarsList);
+  const [darsAccounts, setDarsAccounts] = useState<DarsAccount[]>(initialDarsAccounts);
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[]>(defaultRegistrationFields);
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>(initialAudioTracks);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,13 +133,33 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       if (storedFaqs) setFaqs(JSON.parse(storedFaqs));
 
       const storedRegs = localStorage.getItem(STORAGE_KEYS.REGISTRATIONS);
-      if (storedRegs) setRegistrations(JSON.parse(storedRegs));
+      if (storedRegs) {
+        const parsed = JSON.parse(storedRegs);
+        const normalized = Array.isArray(parsed)
+          ? parsed.map((r: any, idx: number) => ensureRegistrationCode(r, idx))
+          : [];
+        setRegistrations(normalized);
+      }
 
       const storedFields = localStorage.getItem(STORAGE_KEYS.FIELDS);
       if (storedFields) setRegistrationFields(JSON.parse(storedFields));
 
       const storedAudio = localStorage.getItem(STORAGE_KEYS.AUDIO_TRACKS);
       if (storedAudio) setAudioTracks(JSON.parse(storedAudio));
+
+      const storedDars = localStorage.getItem(STORAGE_KEYS.DARS);
+      if (storedDars) {
+        setDarsList(JSON.parse(storedDars));
+      } else {
+        persist(STORAGE_KEYS.DARS, initialDarsList);
+      }
+
+      const storedAccounts = localStorage.getItem(STORAGE_KEYS.DARS_ACCOUNTS);
+      if (storedAccounts) {
+        setDarsAccounts(JSON.parse(storedAccounts));
+      } else {
+        persist(STORAGE_KEYS.DARS_ACCOUNTS, initialDarsAccounts);
+      }
     } catch (err) {
       console.warn('Could not read from storage, using initial data', err);
     } finally {
@@ -155,6 +212,28 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
           setAudioTracks(remoteTracks);
           persist(STORAGE_KEYS.AUDIO_TRACKS, remoteTracks);
         }
+
+        const darsSnap = await getDocs(collection(db, 'dars'));
+        if (!darsSnap.empty) {
+          const remoteDars: SuffaDars[] = [];
+          darsSnap.forEach((docSnap) => {
+            remoteDars.push({ id: docSnap.id, ...(docSnap.data() as any) });
+          });
+          remoteDars.sort((a, b) => (a.slNo || 999) - (b.slNo || 999));
+          setDarsList(remoteDars);
+          persist(STORAGE_KEYS.DARS, remoteDars);
+        }
+
+        const accountsSnap = await getDocs(collection(db, 'dars_accounts'));
+        if (!accountsSnap.empty) {
+          const remoteAccounts: DarsAccount[] = [];
+          accountsSnap.forEach((docSnap) => {
+            remoteAccounts.push({ id: docSnap.id, ...(docSnap.data() as any) });
+          });
+          remoteAccounts.sort((a, b) => (a.regNo || '').localeCompare(b.regNo || '', undefined, { numeric: true }));
+          setDarsAccounts(remoteAccounts);
+          persist(STORAGE_KEYS.DARS_ACCOUNTS, remoteAccounts);
+        }
       } catch (e) {
         // Firestore rules or offline: keep using local cache seamlessly
       }
@@ -180,11 +259,16 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   ): Promise<{ success: boolean; id?: string; error?: string }> => {
     setIsSaving(true);
     try {
-      // Duplicate email check
-      const normalizedEmail = data.email.trim().toLowerCase();
-      const existing = registrations.find(
-        (r) => r.email.trim().toLowerCase() === normalizedEmail
-      );
+      // Robust phone duplicate check (last 10 digits for matching)
+      const cleanPhone = (p: string) => (p || '').replace(/\D/g, '').slice(-10);
+      const inputCleanPhone = cleanPhone(data.phone);
+      const inputNormalizedEmail = data.email?.trim().toLowerCase() || '';
+
+      const existing = registrations.find((r) => {
+        const phoneMatch = inputCleanPhone.length >= 8 && cleanPhone(r.phone) === inputCleanPhone;
+        const emailMatch = inputNormalizedEmail.length > 0 && r.email && r.email.trim().toLowerCase() === inputNormalizedEmail;
+        return phoneMatch || emailMatch;
+      });
 
       if (existing) {
         return {
@@ -202,9 +286,21 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       }
 
       const newId = `REG-${Date.now().toString(36).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+      const { regCode, checkDigit } = generateRegistrationCode({
+        category: (data as any).category || 'scholar',
+        darsRegNo: data.darsRegNo,
+        sequenceNumber: registrations.length + 1,
+      });
+
       const newRegistration: Registration = {
         ...data,
         id: newId,
+        regCode,
+        checkDigit,
+        gateStatus: 'outside',
+        totalCampusEntries: 0,
+        attendedSessions: [],
+        claimedMeals: {},
         submittedAt: new Date().toISOString(),
         status: 'pending',
       };
@@ -228,6 +324,80 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Public: Find registration by Phone, Reference ID, or Email
+  const findRegistration = async (
+    query: string
+  ): Promise<{ found: boolean; registration?: Registration; message?: string }> => {
+    const cleanQuery = query.trim();
+    if (!cleanQuery) {
+      return { found: false, message: 'Please enter a phone number, registration ID, or email.' };
+    }
+
+    const lower = cleanQuery.toLowerCase();
+    const queryDigits = cleanQuery.replace(/\D/g, '');
+
+    // 1. Search locally in registrations
+    let match = registrations.find((r) => {
+      // Match by exact ID (e.g. REG-ABC123)
+      if (r.id && r.id.toLowerCase() === lower) return true;
+
+      // Match by Systematic Reg Code (e.g. UF26-SCH-SDC01-0042)
+      if (r.regCode && r.regCode.toLowerCase() === lower) return true;
+
+      // Match by Phone (last 10 digits or exact match)
+      if (queryDigits.length >= 8) {
+        const rDigits = (r.phone || '').replace(/\D/g, '');
+        if (
+          rDigits === queryDigits ||
+          rDigits.slice(-10) === queryDigits.slice(-10) ||
+          rDigits.endsWith(queryDigits) ||
+          queryDigits.endsWith(rDigits)
+        ) {
+          return true;
+        }
+      }
+
+      // Match by Email (if email was provided)
+      if (r.email && r.email.trim().toLowerCase() === lower) return true;
+
+      return false;
+    });
+
+    // 2. If not found in local cache, check backend API
+    if (!match) {
+      try {
+        const res = await fetch('/api/register/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: cleanQuery }),
+        });
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.found && resData.registration) {
+            match = resData.registration;
+            // Cache locally
+            if (match && !registrations.some((r) => r.id === match!.id)) {
+              const updated = [match, ...registrations];
+              setRegistrations(updated);
+              persist(STORAGE_KEYS.REGISTRATIONS, updated);
+            }
+          }
+        }
+      } catch (err) {
+        // Fallback to local search result
+      }
+    }
+
+    if (match) {
+      return { found: true, registration: match };
+    }
+
+    return {
+      found: false,
+      message: 'No registration found matching your details.',
+    };
   };
 
   // Admin: Update event info
@@ -386,6 +556,257 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {}
   };
 
+  // Admin: SUFFA Dars
+  const addDars = async (darsData: Omit<SuffaDars, 'id'> & { id?: string }) => {
+    const newId = darsData.id || `dars-${Date.now()}`;
+    const newDars: SuffaDars = {
+      ...darsData,
+      id: newId,
+      createdAt: darsData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const updated = [...darsList, newDars].sort((a, b) => (a.slNo || 999) - (b.slNo || 999));
+    setDarsList(updated);
+    persist(STORAGE_KEYS.DARS, updated);
+    try {
+      await setDoc(doc(db, 'dars', newId), newDars);
+    } catch (e) {}
+  };
+
+  const updateDars = async (id: string, updates: Partial<SuffaDars>) => {
+    const updated = darsList.map((d) => (d.id === id ? { ...d, ...updates, updatedAt: new Date().toISOString() } : d));
+    setDarsList(updated);
+    persist(STORAGE_KEYS.DARS, updated);
+    try {
+      await updateDoc(doc(db, 'dars', id), updates);
+    } catch (e) {}
+  };
+
+  const deleteDars = async (id: string) => {
+    const updated = darsList.filter((d) => d.id !== id);
+    setDarsList(updated);
+    persist(STORAGE_KEYS.DARS, updated);
+    try {
+      await deleteDoc(doc(db, 'dars', id));
+    } catch (e) {}
+  };
+
+  const resetDarsToDefault = async () => {
+    setDarsList(initialDarsList);
+    persist(STORAGE_KEYS.DARS, initialDarsList);
+  };
+
+  // Admin: Dars Logins & Accounts
+  const addDarsAccount = async (accountData: DarsAccount) => {
+    const cleanPhone = normalizePhone(accountData.phone);
+    const newAccount: DarsAccount = {
+      ...accountData,
+      id: accountData.regNo || accountData.id,
+      darsId: accountData.darsId || accountData.regNo,
+      regNo: accountData.regNo,
+      phone: cleanPhone,
+      displayPhone: accountData.displayPhone || formatDisplayPhone(cleanPhone),
+      password: accountData.password || generateDarsPassword(accountData.regNo),
+      isActive: accountData.isActive ?? true,
+      createdAt: accountData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const updated = [
+      ...darsAccounts.filter((a) => a.id !== newAccount.id && a.regNo !== newAccount.regNo),
+      newAccount,
+    ].sort((a, b) => a.regNo.localeCompare(b.regNo, undefined, { numeric: true }));
+
+    setDarsAccounts(updated);
+    persist(STORAGE_KEYS.DARS_ACCOUNTS, updated);
+
+    try {
+      await setDoc(doc(db, 'dars_accounts', newAccount.id), newAccount);
+    } catch (e) {
+      console.warn('Firestore addDarsAccount notice', e);
+    }
+  };
+
+  const updateDarsAccount = async (id: string, updates: Partial<DarsAccount>) => {
+    const now = new Date().toISOString();
+    const cleanUpdates = { ...updates, updatedAt: now };
+    if (updates.phone) {
+      cleanUpdates.phone = normalizePhone(updates.phone);
+      cleanUpdates.displayPhone = formatDisplayPhone(cleanUpdates.phone);
+    }
+    const updated = darsAccounts.map((a) => (a.id === id || a.regNo === id ? { ...a, ...cleanUpdates } : a));
+    setDarsAccounts(updated);
+    persist(STORAGE_KEYS.DARS_ACCOUNTS, updated);
+    try {
+      await updateDoc(doc(db, 'dars_accounts', id), cleanUpdates);
+    } catch (e) {
+      console.warn('Firestore updateDarsAccount notice', e);
+    }
+  };
+
+  const deleteDarsAccount = async (id: string) => {
+    const updated = darsAccounts.filter((a) => a.id !== id && a.regNo !== id);
+    setDarsAccounts(updated);
+    persist(STORAGE_KEYS.DARS_ACCOUNTS, updated);
+    try {
+      await deleteDoc(doc(db, 'dars_accounts', id));
+    } catch (e) {
+      console.warn('Firestore deleteDarsAccount notice', e);
+    }
+  };
+
+  const seedDarsAccounts = async (): Promise<{ count: number; seeded: DarsAccount[] }> => {
+    // Generate/ensure accounts for all SUFFA Dars entries in directory
+    const sourceList = darsList.length > 0 ? darsList : initialDarsList;
+    const now = new Date().toISOString();
+
+    const seeded: DarsAccount[] = sourceList.map((dars, idx) => {
+      const cleanPhone = normalizePhone(dars.phone);
+      const regNo = dars.regNo;
+      // requested password format: sdc0101@ufuq
+      const password = generateDarsPassword(regNo);
+      return {
+        id: regNo,
+        darsId: regNo,
+        regNo,
+        slNo: dars.slNo || idx + 1,
+        darsNameEn: dars.nameEn,
+        darsNameMl: dars.nameMl,
+        mudarris: dars.mudarris,
+        phone: cleanPhone,
+        displayPhone: dars.phone || formatDisplayPhone(cleanPhone),
+        password,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      };
+    });
+
+    setDarsAccounts(seeded);
+    persist(STORAGE_KEYS.DARS_ACCOUNTS, seeded);
+
+    try {
+      for (const acc of seeded) {
+        await setDoc(doc(db, 'dars_accounts', acc.id), acc, { merge: true });
+      }
+    } catch (e) {
+      console.warn('Firestore seedDarsAccounts notice', e);
+    }
+
+    return { count: seeded.length, seeded };
+  };
+
+  const exportDarsCredentialsCSV = () => {
+    const headers = [
+      'Sl No',
+      'Reg No',
+      'Dars Name (English)',
+      'Dars Name (Malayalam)',
+      'Mudarris',
+      'Phone Number',
+      'Password',
+      'Login URL',
+    ];
+    const rows = darsAccounts.map((acc, idx) => [
+      idx + 1,
+      acc.regNo,
+      `"${(acc.darsNameEn || '').replace(/"/g, '""')}"`,
+      `"${(acc.darsNameMl || '').replace(/"/g, '""')}"`,
+      `"${(acc.mudarris || '').replace(/"/g, '""')}"`,
+      acc.displayPhone || acc.phone,
+      acc.password,
+      `${typeof window !== 'undefined' ? window.location.origin : ''}/dars`,
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `ufuq26_dars_logins_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Dars Portal Student CRUD
+  const addStudentForDars = async (
+    studentData: Omit<Registration, 'id' | 'submittedAt'>
+  ): Promise<{ success: boolean; id?: string; error?: string }> => {
+    const cleanPhone = (p: string) => (p || '').replace(/\D/g, '').slice(-10);
+    const studentPhone = cleanPhone(studentData.phone);
+
+    // Duplicate check within system
+    if (studentPhone.length >= 8) {
+      const existing = registrations.find(
+        (r) => cleanPhone(r.phone) === studentPhone
+      );
+      if (existing) {
+        return { success: false, error: 'duplicate' };
+      }
+    }
+
+    const newId = `REG-DARS-${Date.now().toString(36).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+    const { regCode, checkDigit } = generateRegistrationCode({
+      category: studentData.category || 'scholar',
+      darsRegNo: studentData.darsRegNo,
+      sequenceNumber: registrations.length + 1,
+    });
+    const now = new Date().toISOString();
+    const newStudent: Registration = {
+      ...studentData,
+      id: newId,
+      regCode,
+      checkDigit,
+      gateStatus: 'outside',
+      totalCampusEntries: 0,
+      attendedSessions: [],
+      claimedMeals: {},
+      submittedAt: now,
+      status: 'pending', // Strictly default to pending nomination; approval is admin power
+      source: 'dars_portal',
+      registeredBy: 'dars',
+      isArchived: false,
+    };
+
+    const updated = [newStudent, ...registrations];
+    setRegistrations(updated);
+    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+
+    try {
+      await setDoc(doc(db, 'registrations', newId), newStudent);
+    } catch (e) {
+      console.warn('Firestore addStudentForDars notice', e);
+    }
+
+    return { success: true, id: newId };
+  };
+
+  const updateStudentForDars = async (id: string, updates: Partial<Registration>) => {
+    const now = new Date().toISOString();
+    // Prevent Dars coordinators from modifying status (admin authority only)
+    const { status, ...allowedUpdates } = updates;
+    const cleanUpdates = { ...allowedUpdates, updatedAt: now };
+    const updated = registrations.map((r) => (r.id === id ? { ...r, ...cleanUpdates } : r));
+    setRegistrations(updated);
+    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    try {
+      await updateDoc(doc(db, 'registrations', id), cleanUpdates);
+    } catch (e) {
+      console.warn('Firestore updateStudentForDars notice', e);
+    }
+  };
+
+  const deleteStudentForDars = async (id: string) => {
+    const updated = registrations.filter((r) => r.id !== id);
+    setRegistrations(updated);
+    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    try {
+      await deleteDoc(doc(db, 'registrations', id));
+    } catch (e) {
+      console.warn('Firestore deleteStudentForDars notice', e);
+    }
+  };
+
   // Admin: Registrations
   const fetchRegistrations = async () => {
     try {
@@ -399,21 +820,106 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
           (a, b) =>
             new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
         );
-        setRegistrations(remoteRegs);
-        persist(STORAGE_KEYS.REGISTRATIONS, remoteRegs);
+        const normalized = remoteRegs.map((r, idx) => ensureRegistrationCode(r, idx));
+        setRegistrations(normalized);
+        persist(STORAGE_KEYS.REGISTRATIONS, normalized);
       }
     } catch (err) {
       console.warn('Could not sync registrations from Firestore (requires admin auth):', err);
     }
   };
 
-  const updateRegistrationStatus = async (id: string, status: 'pending' | 'confirmed' | 'cancelled') => {
-    const updated = registrations.map((r) => (r.id === id ? { ...r, status } : r));
+  const addRegistration = async (
+    data: Omit<Registration, 'id' | 'submittedAt'> & { id?: string }
+  ) => {
+    const newId =
+      data.id ||
+      `REG-ADM-${Date.now().toString(36).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`;
+    const { regCode, checkDigit } = generateRegistrationCode({
+      category: data.category || 'scholar',
+      darsRegNo: data.darsRegNo,
+      sequenceNumber: registrations.length + 1,
+    });
+    const now = new Date().toISOString();
+    const newReg: Registration = {
+      ...data,
+      id: newId,
+      regCode,
+      checkDigit,
+      gateStatus: 'outside',
+      totalCampusEntries: 0,
+      attendedSessions: [],
+      claimedMeals: {},
+      submittedAt: now,
+      status: data.status || 'confirmed',
+      source: data.source || 'admin_manual',
+      isArchived: false,
+    };
+    const updated = [newReg, ...registrations];
     setRegistrations(updated);
     persist(STORAGE_KEYS.REGISTRATIONS, updated);
     try {
-      await updateDoc(doc(db, 'registrations', id), { status });
-    } catch (e) {}
+      await setDoc(doc(db, 'registrations', newId), newReg);
+    } catch (err) {
+      console.warn('Firestore write error in addRegistration', err);
+    }
+    return { success: true, id: newId };
+  };
+
+  const updateRegistration = async (id: string, updates: Partial<Registration>) => {
+    const now = new Date().toISOString();
+    const finalUpdates = { ...updates, updatedAt: now };
+    const updated = registrations.map((r) => (r.id === id ? { ...r, ...finalUpdates } : r));
+    setRegistrations(updated);
+    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    try {
+      await updateDoc(doc(db, 'registrations', id), finalUpdates);
+    } catch (e) {
+      console.warn('Firestore update error in updateRegistration', e);
+    }
+  };
+
+  const updateRegistrationStatus = async (
+    id: string,
+    status: 'pending' | 'confirmed' | 'cancelled'
+  ) => {
+    await updateRegistration(id, { status });
+  };
+
+  const archiveRegistration = async (id: string, reason?: string) => {
+    const now = new Date().toISOString();
+    await updateRegistration(id, {
+      isArchived: true,
+      archivedAt: now,
+      archivedReason: reason || 'Archived by admin',
+    });
+  };
+
+  const unarchiveRegistration = async (id: string) => {
+    const now = new Date().toISOString();
+    const updated = registrations.map((r) =>
+      r.id === id
+        ? {
+            ...r,
+            isArchived: false,
+            archivedAt: undefined,
+            archivedReason: undefined,
+            updatedAt: now,
+          }
+        : r
+    );
+    setRegistrations(updated);
+    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    try {
+      await updateDoc(doc(db, 'registrations', id), {
+        isArchived: false,
+        archivedAt: null,
+        archivedReason: null,
+        updatedAt: now,
+      });
+    } catch (e) {
+      console.warn('Firestore unarchive error', e);
+    }
   };
 
   const deleteRegistration = async (id: string) => {
@@ -425,43 +931,150 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {}
   };
 
-  const exportRegistrationsCSV = () => {
-    if (registrations.length === 0) {
+  const bulkUpdateRegistrationStatus = async (
+    ids: string[],
+    status: 'pending' | 'confirmed' | 'cancelled'
+  ) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    const updated = registrations.map((r) =>
+      idSet.has(r.id) ? { ...r, status, updatedAt: now } : r
+    );
+    setRegistrations(updated);
+    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    try {
+      await Promise.all(
+        ids.map((id) => updateDoc(doc(db, 'registrations', id), { status, updatedAt: now }))
+      );
+    } catch (e) {}
+  };
+
+  const bulkArchiveRegistrations = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    const updated = registrations.map((r) =>
+      idSet.has(r.id)
+        ? { ...r, isArchived: true, archivedAt: now, updatedAt: now }
+        : r
+    );
+    setRegistrations(updated);
+    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          updateDoc(doc(db, 'registrations', id), {
+            isArchived: true,
+            archivedAt: now,
+            updatedAt: now,
+          })
+        )
+      );
+    } catch (e) {}
+  };
+
+  const bulkUnarchiveRegistrations = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    const updated = registrations.map((r) =>
+      idSet.has(r.id)
+        ? {
+            ...r,
+            isArchived: false,
+            archivedAt: undefined,
+            archivedReason: undefined,
+            updatedAt: now,
+          }
+        : r
+    );
+    setRegistrations(updated);
+    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    try {
+      await Promise.all(
+        ids.map((id) =>
+          updateDoc(doc(db, 'registrations', id), {
+            isArchived: false,
+            archivedAt: null,
+            archivedReason: null,
+            updatedAt: now,
+          })
+        )
+      );
+    } catch (e) {}
+  };
+
+  const bulkDeleteRegistrations = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const updated = registrations.filter((r) => !idSet.has(r.id));
+    setRegistrations(updated);
+    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    try {
+      await Promise.all(ids.map((id) => deleteDoc(doc(db, 'registrations', id))));
+    } catch (e) {}
+  };
+
+  const exportRegistrationsCSV = (
+    regsToExport?: Registration[] | unknown,
+    filename?: string
+  ) => {
+    const list = Array.isArray(regsToExport) ? (regsToExport as Registration[]) : registrations;
+    if (list.length === 0) {
       alert('No registrations available to export.');
       return;
     }
 
     const headers = [
       'Registration ID',
-      'Full Name',
+      'Student Name',
+      'Phone Number',
       'Email',
-      'Phone',
-      'Current Academic Stage',
-      'Higher Study Plans',
-      'Emergency Contact',
-      'Emergency Phone',
+      'Dars Reg No',
+      'Dars Name',
+      'Mudarris',
+      'District',
+      'Category',
       'Status',
-      'Submission Date',
+      'Archived',
+      'Submission Timestamp',
+      'Formatted Date & Time',
+      'Source',
+      'Admin Notes',
     ];
 
-    const rows = registrations.map((r) => [
+    const rows = list.map((r) => [
       r.id,
-      `"${r.fullName.replace(/"/g, '""')}"`,
-      r.email,
-      r.phone,
-      `"${(r.darsYear || '').replace(/"/g, '""')}"`,
-      `"${(r.higherStudyPlan || '').replace(/"/g, '""')}"`,
-      `"${(r.emergencyContact || '').replace(/"/g, '""')}"`,
-      r.emergencyPhone || '',
+      `"${(r.fullName || '').replace(/"/g, '""')}"`,
+      r.phone || '',
+      r.email || '',
+      r.darsRegNo || '',
+      `"${(r.darsName || '').replace(/"/g, '""')}"`,
+      `"${(r.darsMudarris || '').replace(/"/g, '""')}"`,
+      `"${(r.darsDistrict || '').replace(/"/g, '""')}"`,
+      r.category || 'regular',
       r.status,
-      new Date(r.submittedAt).toLocaleString(),
+      r.isArchived ? 'Yes' : 'No',
+      r.submittedAt,
+      `"${new Date(r.submittedAt).toLocaleString('en-IN', {
+        dateStyle: 'medium',
+        timeStyle: 'medium',
+      })}"`,
+      r.source || 'online',
+      `"${(r.adminNotes || '').replace(/"/g, '""')}"`,
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const csvContent =
+      'data:text/csv;charset=utf-8,\uFEFF' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `UFUQ26_Registrations_${new Date().toISOString().slice(0, 10)}.csv`);
+    const name =
+      filename ||
+      `UFUQ26_Registrations_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.setAttribute('download', name);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -499,6 +1112,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isSaving,
         submitRegistration,
+        findRegistration,
         updateEventInfo,
         addSession,
         updateSession,
@@ -513,9 +1127,31 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         updateAudioTrack,
         deleteAudioTrack,
         reorderAudioTracks,
+        darsList,
+        addDars,
+        updateDars,
+        deleteDars,
+        resetDarsToDefault,
+        darsAccounts,
+        addDarsAccount,
+        updateDarsAccount,
+        deleteDarsAccount,
+        seedDarsAccounts,
+        exportDarsCredentialsCSV,
+        addStudentForDars,
+        updateStudentForDars,
+        deleteStudentForDars,
         fetchRegistrations,
+        addRegistration,
+        updateRegistration,
         updateRegistrationStatus,
+        archiveRegistration,
+        unarchiveRegistration,
         deleteRegistration,
+        bulkUpdateRegistrationStatus,
+        bulkArchiveRegistrations,
+        bulkUnarchiveRegistrations,
+        bulkDeleteRegistrations,
         exportRegistrationsCSV,
         resetToDefaultData,
       }}

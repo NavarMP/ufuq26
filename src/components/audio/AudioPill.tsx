@@ -27,6 +27,7 @@ import {
 
 interface AudioPillProps {
   compact?: boolean;
+  singleIcon?: boolean;
 }
 
 function formatTime(seconds: number): string {
@@ -36,7 +37,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
 }
 
-export default function AudioPill({ compact = false }: AudioPillProps) {
+export default function AudioPill({ compact = false, singleIcon = true }: AudioPillProps) {
   const {
     isPlaying,
     volume,
@@ -98,62 +99,88 @@ export default function AudioPill({ compact = false }: AudioPillProps) {
 
   return (
     <div ref={containerRef} className="relative inline-flex items-center">
-      {/* NAVIGATION PILL */}
-      <div
-        className={`flex items-center rounded-full transition-all duration-300 border ${
-          isPlaying
-            ? 'bg-brand-gold/15 border-brand-gold/40 shadow-[0_0_15px_rgba(201,164,92,0.2)]'
-            : isAutoplayBlocked
-            ? 'bg-brand-gold/10 border-brand-gold/30 animate-pulse'
-            : 'bg-black/5 dark:bg-white/5 border-transparent hover:border-brand-gold/25'
-        }`}
-      >
-        {/* Quick Play/Pause Action */}
-        <button
-          onClick={handlePlayToggle}
-          className="p-2 text-neutral-700 dark:text-neutral-200 hover:text-brand-gold dark:hover:text-brand-gold focus:outline-none transition-colors"
-          aria-label={
-            isPlaying
-              ? t('audio.pause') || 'Pause background music'
-              : t('audio.play') || 'Play background music'
-          }
-          title={
-            isPlaying
-              ? t('audio.pause') || 'Pause background music'
-              : t('audio.play') || 'Play background music'
-          }
-        >
-          {isPlaying ? (
-            <Pause className="w-3.5 h-3.5 fill-current" />
-          ) : (
-            <Play className="w-3.5 h-3.5 fill-current" />
-          )}
-        </button>
-
-        {/* Spectrum & Popover Toggle */}
+      {singleIcon ? (
+        /* SINGLE COMPACT MUSIC ICON BUTTON */
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="flex items-center gap-1.5 pr-2.5 pl-0.5 py-1.5 text-xs text-neutral-700 dark:text-neutral-300 hover:text-brand-gold transition-colors focus:outline-none"
+          className={`relative p-2 rounded-full text-neutral-600 dark:text-neutral-300 hover:text-brand-gold dark:hover:text-brand-gold hover:bg-black/5 dark:hover:bg-white/5 transition-all focus:outline-none ${
+            isPlaying ? 'text-brand-gold' : isAutoplayBlocked ? 'animate-pulse text-brand-gold' : ''
+          }`}
           aria-expanded={isOpen}
           aria-haspopup="dialog"
           aria-label={t('audio.title') || 'Background music controls'}
           title={
             currentTrack
-              ? `${currentTrack.title} — ${formatTime(currentTime)} / ${formatTime(duration)}`
+              ? `${currentTrack.title} (${isPlaying ? 'Playing' : 'Paused'})`
               : t('audio.title') || 'Background music controls'
           }
         >
-          <MiniSpectrumBars barCount={4} />
-          {!compact && (
-            <span className="hidden xl:inline text-[11px] font-medium font-mono text-neutral-600 dark:text-neutral-400 max-w-[120px] truncate">
-              {currentTrack?.title || `${volumePercent}%`}
+          <Music className={`w-4 h-4 ${isPlaying ? 'text-brand-gold' : ''}`} />
+          {isPlaying && (
+            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-gold opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-gold shadow-[0_0_6px_rgba(201,164,92,0.8)]" />
             </span>
           )}
         </button>
-      </div>
+      ) : (
+        /* EXPANDED NAVIGATION PILL */
+        <div
+          className={`flex items-center rounded-full transition-all duration-300 border ${
+            isPlaying
+              ? 'bg-brand-gold/15 border-brand-gold/40 shadow-[0_0_15px_rgba(201,164,92,0.2)]'
+              : isAutoplayBlocked
+              ? 'bg-brand-gold/10 border-brand-gold/30 animate-pulse'
+              : 'bg-black/5 dark:bg-white/5 border-transparent hover:border-brand-gold/25'
+          }`}
+        >
+          {/* Quick Play/Pause Action */}
+          <button
+            onClick={handlePlayToggle}
+            className="p-2 text-neutral-700 dark:text-neutral-200 hover:text-brand-gold dark:hover:text-brand-gold focus:outline-none transition-colors"
+            aria-label={
+              isPlaying
+                ? t('audio.pause') || 'Pause background music'
+                : t('audio.play') || 'Play background music'
+            }
+            title={
+              isPlaying
+                ? t('audio.pause') || 'Pause background music'
+                : t('audio.play') || 'Play background music'
+            }
+          >
+            {isPlaying ? (
+              <Pause className="w-3.5 h-3.5 fill-current" />
+            ) : (
+              <Play className="w-3.5 h-3.5 fill-current" />
+            )}
+          </button>
+
+          {/* Spectrum & Popover Toggle */}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex items-center gap-1.5 pr-2.5 pl-0.5 py-1.5 text-xs text-neutral-700 dark:text-neutral-300 hover:text-brand-gold transition-colors focus:outline-none"
+            aria-expanded={isOpen}
+            aria-haspopup="dialog"
+            aria-label={t('audio.title') || 'Background music controls'}
+            title={
+              currentTrack
+                ? `${currentTrack.title} — ${formatTime(currentTime)} / ${formatTime(duration)}`
+                : t('audio.title') || 'Background music controls'
+            }
+          >
+            <MiniSpectrumBars barCount={4} />
+            {!compact && (
+              <span className="hidden xl:inline text-[11px] font-medium font-mono text-neutral-600 dark:text-neutral-400 max-w-[120px] truncate">
+                {currentTrack?.title || `${volumePercent}%`}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* AUTOPLAY HINT BADGE */}
-      {isAutoplayBlocked && !isPlaying && !isOpen && (
+      {/* {isAutoplayBlocked && !isPlaying && !isOpen && (
         <button
           onClick={handlePlayToggle}
           className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap px-2.5 py-0.5 rounded-full text-[10px] bg-brand-gold text-brand-navy font-semibold shadow-md border border-brand-gold-light/40 flex items-center gap-1 animate-bounce z-50"
@@ -161,7 +188,7 @@ export default function AudioPill({ compact = false }: AudioPillProps) {
           <Sparkles className="w-2.5 h-2.5" />
           <span>{t('audio.autoplayHint') || 'Tap to play music'}</span>
         </button>
-      )}
+      )} */}
 
       {/* EXPANDABLE AUDIO CONTROLLER POPOVER */}
       {isOpen && (

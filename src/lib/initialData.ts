@@ -1,4 +1,17 @@
-import { EventInfo, ScheduleSession, Guest, FAQ, RegistrationField, AudioTrack } from '@/types';
+import { EventInfo, ScheduleSession, Guest, FAQ, RegistrationField, AudioTrack, ContactInfo } from '@/types';
+
+export const initialContactInfo: ContactInfo = {
+  email: 'alathurpadidars@gmail.com',
+  phone: '+919074525205',
+  displayPhone: '+91 90745 25205',
+  whatsapp: '+919074525205',
+  socialLinks: {
+    website: 'https://alathurpadidars.in/',
+    facebook: 'https://www.facebook.com/alathoorpadidars/',
+    instagram: 'https://www.instagram.com/alathurpadi_dars',
+    twitter: 'https://x.com/ALATHURPADARS',
+  },
+};
 
 export const initialEventInfo: EventInfo = {
   id: 'ufuq-2026',
@@ -43,6 +56,7 @@ export const initialEventInfo: EventInfo = {
     mapUrl: 'https://maps.app.goo.gl/c8PnXU7Jufx1KgoH6',
     mapEmbedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3916.147983637651!2d75.9868731!3d11.0275338!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ba64d7df6301389%3A0x6b77ea8cbaea09a2!2sAlathurpadi%20Dars!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin',
   },
+  contact: initialContactInfo,
 };
 
 export const initialScheduleSessions: ScheduleSession[] = [
@@ -366,57 +380,30 @@ export const defaultRegistrationFields: RegistrationField[] = [
     enabled: true,
   },
   {
-    id: 'email',
-    label: { en: 'Email Address', ml: 'ഇമെയിൽ വിലാസം', ar: 'البريد الإلكتروني' },
-    type: 'email',
-    required: true,
-    placeholder: { en: 'your.email@example.com', ml: 'ഇമെയിൽ നൽകുക', ar: 'example@domain.com' },
-    order: 2,
-    enabled: true,
-  },
-  {
     id: 'phone',
     label: { en: 'Phone / WhatsApp Number', ml: 'ഫോൺ / വാട്സാപ്പ് നമ്പർ', ar: 'رقم الهاتف / الواتساب' },
     type: 'tel',
     required: true,
-    placeholder: { en: '+91 98765 43210', ml: '+91 നമ്പറിൽ നൽകുക', ar: '+91 98765 43210' },
+    placeholder: { en: '98765 43210', ml: '98765 43210', ar: '98765 43210' },
+    order: 2,
+    enabled: true,
+  },
+  {
+    id: 'email',
+    label: { en: 'Email Address (Optional)', ml: 'ഇമെയിൽ വിലാസം (ഓപ്ഷണൽ)', ar: 'البريد الإلكتروني (اختياري)' },
+    type: 'email',
+    required: false,
+    placeholder: { en: 'your.email@example.com (optional)', ml: 'ഇമെയിൽ നൽകുക (നിർബന്ധമില്ല)', ar: 'example@domain.com (اختياري)' },
     order: 3,
     enabled: true,
   },
   {
-    id: 'darsYear',
-    label: { en: 'Current Academic Stage at SUFFA Dars', ml: 'സുഫ്ഫ ദർസിലെ ഇപ്പോഴത്തെ ഘട്ടം', ar: 'المرحلة الدراسية الحالية في صفا دار' },
-    type: 'text',
+    id: 'dars',
+    label: { en: 'SUFFA Dars Institution', ml: 'സുഫ്ഫ ദർസ് കേന്ദ്രം', ar: 'معهد صفا دار' },
+    type: 'select',
     required: true,
-    placeholder: { en: 'e.g., Final Year / Muthavval / Mukhasar', ml: 'ഉദാഹരണത്തിന്: ഫൈനൽ ഇയർ / മുതവ്വൽ', ar: 'مثال: السنة النهائية / المطول' },
+    placeholder: { en: 'Select your SUFFA Dars', ml: 'നിങ്ങളുടെ സുഫ്ഫ ദർസ് തിരഞ്ഞെടുക്കുക', ar: 'اختر معهد صفا دار' },
     order: 4,
-    enabled: true,
-  },
-  {
-    id: 'higherStudyPlan',
-    label: { en: 'Planned Discipline / Higher Study Interests', ml: 'ഉദ്ദേശിക്കുന്ന ഉന്നത പഠന മേഖല', ar: 'التخصص المستهدف في الدراسات العليا' },
-    type: 'textarea',
-    required: false,
-    placeholder: { en: 'e.g., Islamic Studies, Humanities, Sociology, Law, Languages, Sciences', ml: 'ഉദാ: ഇസ്‌ലാമിക് സ്റ്റഡീസ്, ഹ്യൂമാനിറ്റീസ്, നിയമം, ഭാഷകൾ', ar: 'مثال: الدراسات الإسلامية، العلوم الإنسانية، القانون، اللغات' },
-    order: 5,
-    enabled: true,
-  },
-  {
-    id: 'emergencyContact',
-    label: { en: 'Emergency Contact Person & Relation', ml: 'അടിയന്തര ഘട്ടത്തിൽ ബന്ധപ്പെടേണ്ട ആളും ബന്ധവും', ar: 'جهة اتصال الطوارئ والقرابة' },
-    type: 'text',
-    required: false,
-    placeholder: { en: 'Name and relation (e.g. Father, Brother)', ml: 'പേരും ബന്ധവും (ഉദാ: പിതാവ്, സഹോദരൻ)', ar: 'الاسم وصلة القرابة (مثل الوالد، الأخ)' },
-    order: 6,
-    enabled: true,
-  },
-  {
-    id: 'emergencyPhone',
-    label: { en: 'Emergency Phone Number', ml: 'അടിയന്തര ഫോൺ നമ്പർ', ar: 'هاتف الطوارئ' },
-    type: 'tel',
-    required: false,
-    placeholder: { en: '+91 ...', ml: '+91 ...', ar: '+91 ...' },
-    order: 7,
     enabled: true,
   },
 ];

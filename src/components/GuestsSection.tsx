@@ -5,11 +5,13 @@ import Image from 'next/image';
 import { useEvent } from '@/context/EventContext';
 import { useApp } from '@/context/AppContext';
 import { resolveLocalized } from '@/lib/translations';
-import { UserCheck, Info, User } from 'lucide-react';
+import { useShare } from '@/hooks/useShare';
+import { UserCheck, Info, User, Share2 } from 'lucide-react';
 
 export default function GuestsSection() {
   const { guests } = useEvent();
   const { language, t } = useApp();
+  const { openShare } = useShare();
 
   const publishedGuests = guests.filter((g) => g.published);
 
@@ -100,8 +102,27 @@ export default function GuestsSection() {
                 </div>
 
                 <div className="pt-4 mt-4 border-t border-brand-gold/10 flex items-center justify-between text-[11px] text-neutral-400">
-                  <span>Faculty Allocation</span>
-                  <span className="font-mono text-brand-gold">UFUQ ’26</span>
+                  <span className="font-mono text-brand-gold">UFUQ ’26 Faculty</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const guestName = resolveLocalized(guest.name, language);
+                      const guestTitle = guest.title ? resolveLocalized(guest.title, language) : '';
+                      openShare({
+                        title: `${guestName} — Speaker at UFUQ ’26`,
+                        text: `${guestName}${guestTitle ? ` (${guestTitle})` : ''} at UFUQ ’26 Transition & Leadership Camp. December 24–30, 2026.`,
+                        url: `https://alathurpadidars.in#guests?id=${guest.id}`,
+                        type: 'guest',
+                        badgeText: 'Guest Speaker',
+                        guest,
+                      });
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass-panel border border-brand-gold/20 hover:border-brand-gold text-neutral-700 dark:text-neutral-200 hover:text-brand-gold transition-colors text-[11px] font-semibold"
+                    title={`Share ${resolveLocalized(guest.name, language)}`}
+                  >
+                    <Share2 className="w-3.5 h-3.5 text-brand-gold" />
+                    <span>{t('share.shareSpeaker') || 'Share'}</span>
+                  </button>
                 </div>
               </div>
             );

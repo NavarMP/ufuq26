@@ -98,6 +98,7 @@
   --brand-gold: #c9a45c;
   --brand-gold-hover: #b8924b;
   --brand-gold-light: #ecdcb9;
+  --brand-gold-rgb: 201, 164, 92;
 }
 
 .dark {
@@ -117,17 +118,40 @@
 }
 
 html {
-  scroll-behavior: smooth;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  overflow-x: clip;
 }
 
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
-  overflow-x: hidden;
+}
+
+/* Lenis smooth scrolling rules */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.lenis.lenis-smooth iframe {
+  pointer-events: none;
 }
 
 /* RTL Typography adjustment */
@@ -139,10 +163,25 @@ body {
   font-family: var(--font-arima), var(--font-clash), sans-serif;
 }
 
-/* Custom scrollbar inspired by getartcraft.com */
+/* Eradicate default browser scrollbar on fine pointer devices */
+@media (pointer: fine) {
+  html,
+  body {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none !important;
+    width: 0px !important;
+    height: 0px !important;
+  }
+}
+
+/* Subtle fallback scrollbar for non-fine pointer or touch devices */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -150,13 +189,23 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(201, 164, 92, 0.4);
+  background: rgba(201, 164, 92, 0.3);
   border-radius: 9999px;
   transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(201, 164, 92, 0.7);
+  background: rgba(201, 164, 92, 0.6);
+}
+
+/* Cursor ripple effect */
+.cursor-ripple {
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid rgba(201, 164, 92, 0.6);
+  z-index: 9998;
 }
 
 /* Focus styles for accessibility */
@@ -214,4 +263,61 @@ body {
   background-image: radial-gradient(circle at 50% 0%, rgba(201, 164, 92, 0.15) 0%, transparent 60%),
                     radial-gradient(circle at 100% 50%, rgba(82, 122, 112, 0.18) 0%, transparent 50%),
                     radial-gradient(circle at 0% 100%, rgba(20, 28, 44, 0.8) 0%, transparent 60%);
+}
+
+/* High Contrast Accessibility Mode */
+.high-contrast {
+  --border-subtle: rgba(16, 29, 50, 0.35) !important;
+  --border-strong: rgba(16, 29, 50, 0.85) !important;
+  --text-primary: #050a12 !important;
+  --text-secondary: #1c2638 !important;
+}
+
+.dark.high-contrast {
+  --border-subtle: rgba(255, 255, 255, 0.4) !important;
+  --border-strong: rgba(255, 255, 255, 0.9) !important;
+  --text-primary: #ffffff !important;
+  --text-secondary: #f1f5f9 !important;
+}
+
+/* OLED Pure Black Battery-Saver Mode */
+.dark.oled-black {
+  --bg-primary: #000000 !important;
+  --bg-secondary: #06090e !important;
+  --bg-card: #0a0d14 !important;
+  --bg-card-hover: #10141e !important;
+  --bg-elevated: #131824 !important;
+}
+
+/* Dyslexia High Legibility Mode */
+.font-dyslexic {
+  letter-spacing: 0.04em !important;
+  word-spacing: 0.08em !important;
+  line-height: 1.8 !important;
+}
+
+/* User-controlled Reduced Motion */
+.reduce-motion *,
+.reduce-motion ::before,
+.reduce-motion ::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* Glassmorphism Tier Overrides */
+[data-glass="solid"] .glass-panel {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: var(--bg-card) !important;
+}
+
+[data-glass="balanced"] .glass-panel {
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+[data-glass="cinematic"] .glass-panel {
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
 }

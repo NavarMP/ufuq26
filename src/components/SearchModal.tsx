@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useEvent } from '@/context/EventContext';
 import { useApp } from '@/context/AppContext';
 import { resolveLocalized } from '@/lib/translations';
-import { Search, X, Calendar, User, HelpCircle, ArrowRight } from 'lucide-react';
+import { Search, X, Calendar, User, HelpCircle, ArrowRight, BookOpen } from 'lucide-react';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -80,13 +80,88 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       })
     : [];
 
-  const totalResults = matchingSessions.length + matchingGuests.length + matchingFAQs.length;
+  const aboutTopics = [
+    {
+      id: 'topic-heritage',
+      title: 'Alathurpadi Dars — Classical Islamic Heritage & Halaqah',
+      desc: 'The historic seat of classical Islamic scholarship in Malabar preserving unbroken Isnad and residential dars traditions.',
+      url: '/about#heritage',
+      category: 'About & Heritage',
+    },
+    {
+      id: 'topic-leadership',
+      title: 'Respected Ustads — Ustad Dr. C K Abdurahman Faizy Aripra',
+      desc: 'Patron, Mudarris & Chief Spiritual Guide blending classical Ilm with doctoral academic rigor.',
+      url: '/about#leadership',
+      category: 'Spiritual Leadership',
+    },
+    {
+      id: 'topic-adsa',
+      title: 'ADSA — Alathurpadi Dars Students Association',
+      desc: 'Official governing body uniting active scholars and global alumni.',
+      url: '/about#pillars',
+      category: 'Organization',
+    },
+    {
+      id: 'topic-suffa',
+      title: 'SUFFA Dars — Scholars Union For Fundamental Activities',
+      desc: 'Vibrant student body cultivating research circles and academic excellence across 39+ Dars centers.',
+      url: '/about#pillars',
+      category: 'Student Fraternity',
+    },
+    {
+      id: 'topic-suhba',
+      title: 'SUHBA (صُحْبَة) — Sacred Fellowship & Lifelong Mentorship',
+      desc: 'The timeless Islamic philosophy of mentorship, companionship, and ethical osmosis in university corridors.',
+      url: '/about#suhba',
+      category: 'Philosophy',
+    },
+    {
+      id: 'topic-dars-network',
+      title: '39+ SUFFA Dars Institutions Directory',
+      desc: 'Searchable confederation of affiliated Dars institutions across Kerala with Mudarris contacts.',
+      url: '/about#dars-network',
+      category: 'Directory',
+    },
+    {
+      id: 'topic-camp-matrix',
+      title: 'Camp UFUQ ’26 — 7-Day Transformation Matrix',
+      desc: 'December 24–30, 2026. 7-day residential leadership and transition bootcamp.',
+      url: '/about#camp-matrix',
+      category: 'Curriculum',
+    },
+    {
+      id: 'topic-digital-craft',
+      title: 'Web Application & Innovative Digital Features',
+      desc: 'Next.js 15, Web Audio API frequency spectrum, trilingual engine, and dual portal architecture.',
+      url: '/about#digital-craft',
+      category: 'Digital Innovation',
+    },
+  ];
 
-  const handleSelect = (hash: string) => {
+  const matchingTopics = q
+    ? aboutTopics.filter((t) => {
+        return (
+          t.title.toLowerCase().includes(q) ||
+          t.desc.toLowerCase().includes(q) ||
+          t.category.toLowerCase().includes(q)
+        );
+      })
+    : [];
+
+  const totalResults = matchingSessions.length + matchingGuests.length + matchingFAQs.length + matchingTopics.length;
+
+  const handleSelect = (target: string) => {
     onClose();
-    const el = document.querySelector(hash);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+    if (target.startsWith('/')) {
+      window.location.href = target;
+    } else {
+      const el = document.querySelector(target);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        window.location.href = '/' + target;
+      }
     }
   };
 
@@ -134,7 +209,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             <div className="text-center py-8 text-neutral-500 text-sm">
               <p>Type keywords to search across UFUQ ’26 schedule, speakers, and FAQs.</p>
               <div className="flex flex-wrap justify-center gap-2 mt-4">
-                {['Academics', 'Mentorship', 'Curriculum', 'Schedule', 'Venue'].map((chip) => (
+                {['Dars Heritage', 'Usthad', 'SUHBA', 'ADSA', 'SUFFA', 'Schedule', 'Academics'].map((chip) => (
                   <button
                     key={chip}
                     onClick={() => setQuery(chip)}
@@ -210,6 +285,38 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                           {resolveLocalized(guest.title, language)}
                         </div>
                       )}
+                    </div>
+                    <ArrowRight className={`w-4 h-4 text-neutral-400 group-hover:text-brand-gold shrink-0 transition-transform ${isRtl ? 'rotate-180' : ''}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* About & Heritage Topics */}
+          {matchingTopics.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-brand-gold uppercase tracking-wider mb-2 px-2">
+                <BookOpen className="w-3.5 h-3.5" />
+                About & Heritage ({matchingTopics.length})
+              </div>
+              <div className="space-y-1.5">
+                {matchingTopics.map((topic) => (
+                  <button
+                    key={topic.id}
+                    onClick={() => handleSelect(topic.url)}
+                    className="w-full text-left rtl:text-right p-3 rounded-xl hover:bg-brand-gold/10 dark:hover:bg-brand-gold/15 transition-colors flex items-center justify-between group"
+                  >
+                    <div>
+                      <div className="text-[10px] font-mono text-brand-teal dark:text-emerald-400 font-medium mb-0.5 uppercase">
+                        {topic.category}
+                      </div>
+                      <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 group-hover:text-brand-gold">
+                        {topic.title}
+                      </div>
+                      <div className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 mt-0.5">
+                        {topic.desc}
+                      </div>
                     </div>
                     <ArrowRight className={`w-4 h-4 text-neutral-400 group-hover:text-brand-gold shrink-0 transition-transform ${isRtl ? 'rotate-180' : ''}`} />
                   </button>

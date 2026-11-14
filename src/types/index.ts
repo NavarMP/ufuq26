@@ -28,6 +28,7 @@ export interface EventInfo {
     mapUrl: string;
     mapEmbedUrl?: string;
   };
+  contact?: ContactInfo;
 }
 
 export interface ScheduleSession {
@@ -63,20 +64,134 @@ export interface FAQ {
   order: number;
 }
 
+export interface SuffaDars {
+  id: string;
+  regNo: string;
+  slNo?: number;
+  nameEn: string;
+  nameMl: string;
+  mudarris: string;
+  phone: string;
+  district?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DarsAccount {
+  id: string; // Typically matches regNo e.g. 'SDC01'
+  slNo?: number;
+  darsId: string;
+  regNo: string;
+  darsNameEn: string;
+  darsNameMl: string;
+  mudarris: string;
+  phone: string; // Clean 10-digit phone number
+  displayPhone: string; // Formatted phone, e.g. '+91 98765 43210'
+  password: string; // Protected credentials string
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string;
+}
+
+export type AttendeeCategory =
+  | 'scholar'
+  | 'faculty'
+  | 'vip'
+  | 'organizer'
+  | 'volunteer'
+  | 'press'
+  | 'regular'
+  | 'delegate';
+
+export type GateStatus = 'outside' | 'inside';
+
 export interface Registration {
   id: string;
+  legacyId?: string;
+  regCode?: string; // e.g. 'UF26-SCH-SDC01-0042'
+  checkDigit?: string;
   fullName: string;
-  email: string;
   phone: string;
+  email?: string;
+  darsId?: string;
+  darsName?: string;
+  darsRegNo?: string;
+  darsMudarris?: string;
+  darsDistrict?: string;
+  submittedAt: string;
+  updatedAt?: string;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  registeredBy?: 'public' | 'dars' | 'admin';
+  notes?: string;
+  // Archival and operational fields
+  isArchived?: boolean;
+  archivedAt?: string;
+  archivedReason?: string;
+  category?: AttendeeCategory;
+  tags?: string[];
+  adminNotes?: string;
+  source?: 'online' | 'admin_manual' | 'dars_portal';
+
+  // Gate, Attendance & Access fields
+  gateStatus?: GateStatus;
+  lastScannedAt?: string;
+  lastCheckpoint?: string; // 'main_gate' | 'dining_hall' | 'auditorium' | 'hostel'
+  lastScannedBy?: string;
+  totalCampusEntries?: number;
+  attendedSessions?: string[]; // Array of session IDs attended
+  claimedMeals?: Record<string, string>; // mealSlotKey -> ISO timestamp string
+  bloodGroup?: string;
+  hostelRoom?: string;
+
+  // Legacy optional fields for backward compatibility
   darsYear?: string;
   currentInstitution?: string;
   higherStudyPlan?: string;
   dietaryRequirements?: string;
   emergencyContact?: string;
   emergencyPhone?: string;
-  agreedToTerms: boolean;
-  submittedAt: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  agreedToTerms?: boolean;
+}
+
+export type CheckpointType = 'main_gate' | 'dining_hall' | 'auditorium' | 'hostel';
+
+export interface GateScanLog {
+  id: string;
+  registrationId: string;
+  regCode: string;
+  attendeeName: string;
+  darsRegNo?: string;
+  darsName?: string;
+  category: AttendeeCategory;
+  checkpoint: CheckpointType;
+  direction: 'in' | 'out' | 'verify_only';
+  action:
+    | 'entry_allowed'
+    | 'exit_recorded'
+    | 'meal_claimed'
+    | 'session_marked'
+    | 'denied_duplicate'
+    | 'denied_invalid'
+    | 'verified';
+  resultStatus: 'granted' | 'warning' | 'denied';
+  message: string;
+  scannedAt: string;
+  scannedByUid: string;
+  scannedByName: string;
+  deviceType: 'camera' | 'hardware_wedge' | 'manual_override';
+  sessionContext?: string;
+  offlineQueued?: boolean;
+}
+
+export interface MealSlot {
+  id: string; // e.g. 'day1_lunch'
+  label: string;
+  day: number;
+  type: 'breakfast' | 'lunch' | 'tea' | 'dinner';
+  date: string;
+  startTime: string; // '12:30'
+  endTime: string; // '14:30'
 }
 
 export interface RegistrationField {
@@ -93,12 +208,14 @@ export interface RegistrationField {
 export interface ContactInfo {
   email?: string;
   phone?: string;
+  displayPhone?: string;
   whatsapp?: string;
   socialLinks: {
     website?: string;
     facebook?: string;
     instagram?: string;
     twitter?: string;
+    youtube?: string;
   };
 }
 

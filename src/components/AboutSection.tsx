@@ -2,10 +2,11 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useEvent } from '@/context/EventContext';
 import { useApp } from '@/context/AppContext';
 import { resolveLocalized } from '@/lib/translations';
-import { BookOpen, Compass, Award, ExternalLink, ShieldCheck } from 'lucide-react';
+import { BookOpen, Compass, ExternalLink, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
 
 export default function AboutSection() {
   const { eventInfo } = useEvent();
@@ -180,6 +181,39 @@ export default function AboutSection() {
             <p className="text-xs text-brand-teal dark:text-emerald-400 font-medium italic">
               &ldquo;Knowledge without ethical roots is fragile; with Ilm, our scholars stand prepared for any challenge the world presents.&rdquo;
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Dedicated Masterpiece About Page Gateway Banner */}
+      <div className="mt-12 rounded-3xl glass-panel p-6 sm:p-10 border-2 border-brand-gold/40 shadow-2xl bg-gradient-to-r from-brand-navy/10 via-brand-gold/10 to-brand-teal/10 relative overflow-hidden group hover:border-brand-gold/70 transition-all duration-300">
+        <div
+          aria-hidden="true"
+          className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-brand-gold/15 blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-500"
+        />
+
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10 text-center md:text-left rtl:md:text-right">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand-gold/20 text-brand-gold text-xs font-bold uppercase tracking-wider border border-brand-gold/30">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Full Historical Chronicle & Ecosystem</span>
+            </div>
+            <h3 className="font-clash text-2xl sm:text-3xl font-extrabold text-brand-navy dark:text-white">
+              Explore the Dedicated About Experience
+            </h3>
+            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
+              Immerse yourself in the comprehensive history of Alathurpadi Dars, the guidance of our revered Ustads, the fraternities of ADSA and SUFFA, the sacred philosophy of <strong className="text-brand-gold">SUHBA (صُحْبَة)</strong>, and the searchable directory of all <strong>39+ SUFFA Dars institutions</strong>.
+            </p>
+          </div>
+
+          <div className="shrink-0">
+            <Link
+              href="/about"
+              className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full bg-brand-gold hover:bg-brand-gold-hover text-brand-navy font-bold text-sm shadow-xl shadow-brand-gold/25 hover:scale-105 active:scale-95 transition-all duration-200"
+            >
+              <span>Explore Dedicated Page</span>
+              <ArrowRight className={`w-4 h-4 ${isRtl ? 'rotate-180' : ''}`} />
+            </Link>
           </div>
         </div>
       </div>

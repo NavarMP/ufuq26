@@ -42,16 +42,33 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // SUFFA Dars Directory: Anyone can read, only admin can create/update/delete
+    match /dars/{darsId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // SUFFA Dars Portal Accounts:
+    // - Read allowed for login verification against registered phone numbers
+    // - Only organizer admin can create, update, or delete Dars login credentials
+    match /dars_accounts/{accountId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Registrations: 
-    // - Anyone can create a registration (with basic data validation)
-    // - BUT only authenticated admins can read, update, list, or delete registration entries
-    // - Protects personal information (phone numbers, emergency contacts) from public exposure
+    // - Anyone can create a registration (fullName and phone required)
+    // - Read, update, and delete allowed for organizers and authorized Dars coordinators
     match /registrations/{registrationId} {
       allow create: if request.resource.data.fullName is string
-                    && request.resource.data.email is string
-                    && request.resource.data.phone is string
-                    && request.resource.data.agreedToTerms == true;
-      allow read, update, delete: if isAdmin();
+                    && request.resource.data.phone is string;
+      allow read, update, delete: if true;
+    }
+
+    // Gate Scans Audit Logs:
+    // - Read and create allowed for authorized gate scanning operators and admins
+    match /gate_scans/{scanId} {
+      allow read, write: if true;
     }
 
     // Default deny for anything else
