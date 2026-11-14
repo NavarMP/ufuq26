@@ -57,10 +57,13 @@ GEMINI_API_KEY="AIzaSy..."
 2. Name the project `ufuq-2026` (or your chosen project ID).
 3. Enable Google Analytics if desired, or skip.
 
-### Step 3.2: Enable Authentication
+### Step 3.2: Enable Authentication & Add Organizers
 1. Navigate to **Build > Authentication > Sign-in method**.
-2. Enable **Email/Password**.
-3. Create an administrator account (e.g., `admin@alathurpadidars.in`).
+2. Enable **Email/Password** (Email link is optional; password-based sign-in is enabled).
+3. In the **Users** tab, click **Add user**:
+   - Organizers can use **any email provider** (e.g., personal `organizer@gmail.com`, `user@yahoo.com`, or domain `admin@alathurpadidars.in`).
+   - Assign a secure password (minimum 12 characters).
+   - Organizers can reset their password anytime from the `/admin` portal login screen.
 
 ### Step 3.3: Initialize Cloud Firestore
 1. Navigate to **Build > Firestore Database > Create Database**.
@@ -70,12 +73,16 @@ GEMINI_API_KEY="AIzaSy..."
    firebase deploy --only firestore:rules,firestore:indexes
    ```
 
-### Step 3.4: Initialize Cloud Storage
-1. Navigate to **Build > Storage > Get Started**.
-2. Deploy the pre-configured storage security rules:
-   ```bash
-   firebase deploy --only storage:rules
-   ```
+### Step 3.4: Media & Image Storage (Supabase Storage — Free, No Credit Card)
+Since Google Cloud now requires a billing card (Blaze plan) to initialize new Firebase Storage buckets, media and speaker photo uploads are handled via **Supabase Storage** (100% free with no credit card required):
+1. Sign up free at [supabase.com](https://supabase.com) and create a project.
+2. Go to **Storage > Create a new bucket**:
+   - Bucket name: `ufuq-media`
+   - Set **Public bucket** to **ON**.
+3. Under **Project Settings > API**, copy:
+   - `Project URL` -> `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon public` key -> `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+4. Add them to your `.env.local` or GitHub Secrets.
 
 ### Step 3.5: Set Up Hosting
 1. Build the production application:

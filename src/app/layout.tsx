@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
+import { AuthProvider } from '@/context/AuthContext';
+import { AudioProvider } from '@/context/AudioContext';
 import { EventProvider } from '@/context/EventContext';
 import CustomCursor from '@/components/CustomCursor';
 import OfflineBanner from '@/components/OfflineBanner';
@@ -71,11 +73,15 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen flex flex-col font-clash bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased selection:bg-brand-gold selection:text-brand-navy">
         <AppProvider>
-          <EventProvider>
-            <CustomCursor />
-            <OfflineBanner />
-            {children}
-          </EventProvider>
+          <AuthProvider>
+            <EventProvider>
+              <AudioProvider>
+                <CustomCursor />
+                <OfflineBanner />
+                {children}
+              </AudioProvider>
+            </EventProvider>
+          </AuthProvider>
         </AppProvider>
       </body>
     </html>

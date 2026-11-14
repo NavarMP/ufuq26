@@ -4,14 +4,13 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
+import AudioPill from '@/components/audio/AudioPill';
 import {
   Sun,
   Moon,
   Laptop,
   Globe,
   Search,
-  Volume2,
-  VolumeX,
   ShieldAlert,
   Calendar,
   Users,
@@ -28,7 +27,7 @@ interface NavigationProps {
 }
 
 export default function Navigation({ onOpenSearch }: NavigationProps) {
-  const { language, setLanguage, theme, setTheme, t, isRtl, isAudioPlaying, toggleAudio } = useApp();
+  const { language, setLanguage, theme, setTheme, t, isRtl } = useApp();
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isThemeOpen, setIsThemeOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -108,19 +107,8 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
             <Search className="w-4 h-4" />
           </button>
 
-          {/* Ambient Audio Toggle */}
-          <button
-            onClick={toggleAudio}
-            className={`p-2 rounded-full transition-colors focus:outline-none ${
-              isAudioPlaying
-                ? 'text-brand-gold bg-brand-gold/10'
-                : 'text-neutral-600 dark:text-neutral-300 hover:bg-black/5 dark:hover:bg-white/5'
-            }`}
-            aria-label={isAudioPlaying ? 'Mute ambient soundscape' : 'Play ambient soundscape'}
-            title={isAudioPlaying ? 'Mute ambient soundscape' : 'Play ambient soundscape (gentle meditative chord)'}
-          >
-            {isAudioPlaying ? <Volume2 className="w-4 h-4 animate-pulse" /> : <VolumeX className="w-4 h-4" />}
-          </button>
+          {/* Interactive Audio Pill with Spectrum */}
+          <AudioPill />
 
           {/* Language Selector Dropdown */}
           <div className="relative">
@@ -270,7 +258,7 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
           <span className="font-arabic text-xs text-brand-gold font-medium">أُفُق</span>
         </Link>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={onOpenSearch}
             className="p-2 rounded-full text-neutral-600 dark:text-neutral-300"
@@ -278,13 +266,7 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
           >
             <Search className="w-4 h-4" />
           </button>
-          <button
-            onClick={toggleAudio}
-            className={`p-2 rounded-full ${isAudioPlaying ? 'text-brand-gold' : 'text-neutral-600 dark:text-neutral-300'}`}
-            aria-label="Audio"
-          >
-            {isAudioPlaying ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-          </button>
+          <AudioPill compact={true} />
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 rounded-full text-neutral-600 dark:text-neutral-300"

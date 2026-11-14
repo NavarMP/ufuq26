@@ -12,7 +12,7 @@ interface Message {
 
 export default function AIAssistant() {
   const { eventInfo, schedule, guests, faqs } = useEvent();
-  const { t, isRtl } = useApp();
+  const { t, isRtl, language } = useApp();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
@@ -45,6 +45,7 @@ export default function AIAssistant() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: textToSend,
+          language,
           context: {
             title: eventInfo.titleEnglish,
             dates: `${eventInfo.startDate} to ${eventInfo.endDate}`,

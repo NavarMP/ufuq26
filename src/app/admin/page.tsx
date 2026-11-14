@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEvent } from '@/context/EventContext';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { resolveLocalized } from '@/lib/translations';
-import { ScheduleSession, Guest, FAQ } from '@/types';
+import { ScheduleSession, Guest, FAQ, AudioTrack } from '@/types';
+import { uploadMediaToSupabase } from '@/lib/supabase';
 import {
   Lock,
   Unlock,
@@ -28,6 +30,18 @@ import {
   Shield,
   Search,
   ExternalLink,
+  Upload,
+  Loader2,
+  Music,
+  Play,
+  Pause,
+  ArrowUp,
+  ArrowDown,
+  Star,
+  Check,
+  LogOut,
+  Mail,
+  KeyRound,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -37,6 +51,7 @@ export default function AdminPage() {
     guests,
     faqs,
     registrations,
+    audioTracks,
     updateEventInfo,
     addSession,
     updateSession,
@@ -47,6 +62,11 @@ export default function AdminPage() {
     addFAQ,
     updateFAQ,
     deleteFAQ,
+    addAudioTrack,
+    updateAudioTrack,
+    deleteAudioTrack,
+    reorderAudioTracks,
+    fetchRegistrations,
     updateRegistrationStatus,
     deleteRegistration,
     exportRegistrationsCSV,
@@ -54,12 +74,37 @@ export default function AdminPage() {
   } = useEvent();
 
   const { language } = useApp();
+  const { user, loading: authLoading, signIn, signOut, resetPassword } = useAuth();
 
-  // Authentication gate: Passcode or Firebase Auth
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passcode, setPasscode] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'sessions' | 'guests' | 'faqs' | 'registrations' | 'settings'>('dashboard');
+  // Authentication State
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isResetMode, setIsResetMode] = useState(false);
+  const [isSubmittingReset, setIsSubmittingReset] = useState(false);
+  const [resetSuccessMessage, setResetSuccessMessage] = useState<string | null>(null);
+
+  // Auto-fetch registrations when organizer is authenticated
+  useEffect(() => {
+    if (user) {
+      fetchRegistrations();
+    }
+  }, [user]);
+
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'sessions' | 'guests' | 'faqs' | 'registrations' | 'audio' | 'settings'>('dashboard');
+
+  // Background Music Admin State
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioTitle, setAudioTitle] = useState('');
+  const [audioArtist, setAudioArtist] = useState('');
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioIsDefault, setAudioIsDefault] = useState(false);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [audioUploadError, setAudioUploadError] = useState<string | null>(null);
+  const [previewingTrackId, setPreviewingTrackId] = useState<string | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Search in registrations
   const [regSearch, setRegSearch] = useState('');
@@ -113,14 +158,164 @@ export default function AdminPage() {
     order: 1,
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size exceeds 10MB limit.');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    setUploadError(null);
+    try {
+      const publicUrl = await uploadMediaToSupabase(file, 'speakers');
+      setGuestForm((prev) => ({ ...prev, photoUrl: publicUrl }));
+    } catch (err: any) {
+      console.error(err);
+      const msg = err.message || 'Upload failed';
+      setUploadError(msg);
+      alert(msg);
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  // Handle audio file selection and duration extraction
+  const handleAudioFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 35 * 1024 * 1024) {
+      alert('Audio file size exceeds 35MB limit.');
+      return;
+    }
+
+    setAudioFile(file);
+    setAudioUploadError(null);
+
+    // Auto-generate clean title from file name
+    const rawName = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+    setAudioTitle((prev) => prev.trim() || rawName);
+    setAudioArtist((prev) => prev.trim() || 'UFUQ ’26');
+
+    // Read duration
+    if (typeof window !== 'undefined') {
+      const url = URL.createObjectURL(file);
+      const audio = new window.Audio(url);
+      audio.onloadedmetadata = () => {
+        if (isFinite(audio.duration)) {
+          setAudioDuration(Math.round(audio.duration));
+        }
+        URL.revokeObjectURL(url);
+      };
+    }
+  };
+
+  // Upload audio to Supabase Storage & add to playlist
+  const handleUploadAudio = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Default authorized passcode for camp organizers: ufuq2026 or adsa2026
-    if (passcode.trim() === 'ufuq2026' || passcode.trim() === 'adsa2026') {
-      setIsAuthenticated(true);
-      setAuthError('');
+    if (!audioFile) {
+      alert('Please select an audio file to upload.');
+      return;
+    }
+
+    setIsUploadingAudio(true);
+    setAudioUploadError(null);
+
+    try {
+      const publicUrl = await uploadMediaToSupabase(audioFile, 'audio');
+      await addAudioTrack({
+        title: audioTitle.trim() || 'Background Audio Track',
+        artist: audioArtist.trim() || 'UFUQ ’26',
+        src: publicUrl,
+        duration: audioDuration || 0,
+        order: audioTracks.length + 1,
+        enabled: true,
+        isDefault: audioIsDefault || audioTracks.length === 0,
+      });
+
+      setAudioFile(null);
+      setAudioTitle('');
+      setAudioArtist('');
+      setAudioDuration(0);
+      setAudioIsDefault(false);
+      alert('Audio track successfully uploaded and added to the playlist!');
+    } catch (err: any) {
+      console.error('Audio upload error:', err);
+      const msg = err.message || 'Audio upload failed';
+      setAudioUploadError(msg);
+      alert(msg);
+    } finally {
+      setIsUploadingAudio(false);
+    }
+  };
+
+  // Preview track inside admin table
+  const toggleTrackPreview = (track: AudioTrack) => {
+    if (!previewAudioRef.current) return;
+    const audio = previewAudioRef.current;
+
+    if (previewingTrackId === track.id) {
+      audio.pause();
+      setPreviewingTrackId(null);
     } else {
-      setAuthError('Incorrect passcode. Use the organizer passcode provided in the documentation.');
+      audio.src = track.src;
+      audio.play().catch(() => {});
+      setPreviewingTrackId(track.id);
+    }
+  };
+
+  // Reorder audio tracks
+  const handleMoveTrack = async (index: number, direction: 'up' | 'down') => {
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= audioTracks.length) return;
+
+    const copy = [...audioTracks];
+    const temp = copy[index];
+    copy[index] = copy[targetIdx];
+    copy[targetIdx] = temp;
+
+    await reorderAudioTracks(copy);
+  };
+
+  // Set track as default
+  const handleSetDefaultTrack = async (trackId: string) => {
+    for (const t of audioTracks) {
+      await updateAudioTrack(t.id, { isDefault: t.id === trackId });
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setResetSuccessMessage(null);
+    setIsSubmittingAuth(true);
+    try {
+      await signIn(email, password);
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to sign in. Please check your credentials.');
+    } finally {
+      setIsSubmittingAuth(false);
+    }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    setResetSuccessMessage(null);
+    setIsSubmittingReset(true);
+    try {
+      await resetPassword(email);
+      setResetSuccessMessage(`Password reset email sent to ${email.trim()}! Please check your inbox.`);
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to send password reset email.');
+    } finally {
+      setIsSubmittingReset(false);
     }
   };
 
@@ -317,13 +512,25 @@ export default function AdminPage() {
     );
   });
 
+  // Loading auth session
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-mesh-pattern">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 text-brand-gold animate-spin" />
+          <p className="text-xs font-mono text-neutral-400">Verifying organizer session...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Login Gate
-  if (!isAuthenticated) {
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-mesh-pattern">
         <div className="w-full max-w-md p-8 rounded-3xl glass-panel border border-brand-gold/30 shadow-2xl text-center space-y-6">
           <div className="w-16 h-16 rounded-2xl bg-brand-navy p-3 flex items-center justify-center mx-auto border border-brand-gold/30 shadow-md">
-            <Lock className="w-8 h-8 text-brand-gold" />
+            <Shield className="w-8 h-8 text-brand-gold" />
           </div>
 
           <div className="space-y-1">
@@ -335,37 +542,163 @@ export default function AdminPage() {
             </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="text-left space-y-1">
-              <label
-                htmlFor="admin-passcode"
-                className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
-              >
-                Organizer Passcode
-              </label>
-              <input
-                id="admin-passcode"
-                type="password"
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
-                placeholder="Enter authorized passcode"
-                className="w-full px-4 py-3 rounded-2xl bg-white/60 dark:bg-black/40 border border-brand-gold/25 focus:border-brand-gold text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none"
-              />
-              {authError && (
-                <p className="text-[11px] text-rose-500 pt-1">{authError}</p>
-              )}
+          {authError && (
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs text-left flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{authError}</span>
             </div>
+          )}
 
-            <button
-              type="submit"
-              className="w-full py-3 rounded-full bg-brand-gold hover:bg-brand-gold-hover text-brand-navy font-clash font-bold text-sm shadow-md transition-colors"
-            >
-              Sign In to Admin
-            </button>
-          </form>
+          {resetSuccessMessage && (
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs text-left flex items-start gap-2">
+              <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{resetSuccessMessage}</span>
+            </div>
+          )}
 
-          <div className="p-3 rounded-xl bg-black/5 dark:bg-white/5 text-[11px] text-neutral-500 text-left">
-            <strong>Default Access:</strong> Enter <code className="text-brand-gold font-mono">ufuq2026</code> to unlock the management portal immediately.
+          {!isResetMode ? (
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="text-left space-y-1">
+                <label
+                  htmlFor="admin-email"
+                  className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                >
+                  Organizer Email
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    id="admin-email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="organizer@gmail.com, @alathurpadidars.in..."
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/60 dark:bg-black/40 border border-brand-gold/25 focus:border-brand-gold text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="text-left space-y-1">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="admin-password"
+                    className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                  >
+                    Password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResetMode(true);
+                      setAuthError(null);
+                      setResetSuccessMessage(null);
+                    }}
+                    className="text-[11px] text-brand-gold hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    id="admin-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your organizer password"
+                    className="w-full pl-10 pr-11 py-3 rounded-2xl bg-white/60 dark:bg-black/40 border border-brand-gold/25 focus:border-brand-gold text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingAuth}
+                className="w-full py-3 rounded-full bg-brand-gold hover:bg-brand-gold-hover text-brand-navy font-clash font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isSubmittingAuth ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    <span>Sign In to Admin Portal</span>
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handlePasswordReset} className="space-y-4">
+              <div className="text-left space-y-1">
+                <label
+                  htmlFor="reset-email"
+                  className="block text-xs font-semibold text-neutral-700 dark:text-neutral-300"
+                >
+                  Organizer Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    id="reset-email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your registered organizer email"
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/60 dark:bg-black/40 border border-brand-gold/25 focus:border-brand-gold text-sm text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none transition-colors"
+                  />
+                </div>
+                <p className="text-[11px] text-neutral-500 pt-1">
+                  We will send a password reset link to this address via Firebase Authentication.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingReset}
+                className="w-full py-3 rounded-full bg-brand-gold hover:bg-brand-gold-hover text-brand-navy font-clash font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isSubmittingReset ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Sending Reset Link...</span>
+                  </>
+                ) : (
+                  <span>Send Password Reset Link</span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsResetMode(false);
+                  setAuthError(null);
+                  setResetSuccessMessage(null);
+                }}
+                className="text-xs text-neutral-500 hover:text-brand-gold transition-colors"
+              >
+                &larr; Back to Sign In
+              </button>
+            </form>
+          )}
+
+          <div className="p-3.5 rounded-2xl bg-black/5 dark:bg-white/5 text-[11px] text-neutral-500 text-left border border-brand-gold/10">
+            <strong>Security Notice:</strong> Organizer accounts are managed via Firebase Authentication. Organizers may use any approved email (Gmail, Yahoo, alathurpadidars.in, etc.).
           </div>
 
           <Link
@@ -416,11 +749,18 @@ export default function AdminPage() {
             <ExternalLink className="w-3.5 h-3.5" />
           </Link>
 
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-gold/10 border border-brand-gold/20 text-xs text-brand-navy dark:text-neutral-200">
+            <Mail className="w-3.5 h-3.5 text-brand-gold" />
+            <span className="font-mono text-[11px] truncate max-w-[200px]">{user?.email}</span>
+          </div>
+
           <button
-            onClick={() => setIsAuthenticated(false)}
-            className="px-3.5 py-1.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 transition-colors"
+            onClick={() => signOut()}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 transition-colors"
+            title="Sign out of organizer session"
           >
-            Lock
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
           </button>
         </div>
       </header>
@@ -435,6 +775,7 @@ export default function AdminPage() {
             { id: 'sessions', label: `Schedule (${schedule.length})`, icon: Calendar },
             { id: 'guests', label: `Speakers (${guests.length})`, icon: Users },
             { id: 'faqs', label: `FAQs (${faqs.length})`, icon: HelpCircle },
+            { id: 'audio', label: `Background Music (${audioTracks.length})`, icon: Music },
             { id: 'settings', label: 'Event Settings', icon: Settings },
           ].map((tab) => (
             <button
@@ -599,13 +940,24 @@ export default function AdminPage() {
                 />
               </div>
 
-              <button
-                onClick={exportRegistrationsCSV}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-gold text-brand-navy font-bold text-xs shadow hover:bg-brand-gold-hover transition-colors shrink-0"
-              >
-                <Download className="w-4 h-4" />
-                <span>Export CSV ({registrations.length})</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => fetchRegistrations()}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-brand-gold/20 text-neutral-700 dark:text-neutral-300 text-xs font-semibold transition-colors shrink-0"
+                  title="Fetch latest registrations from Cloud Firestore"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Sync Cloud</span>
+                </button>
+
+                <button
+                  onClick={exportRegistrationsCSV}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-gold text-brand-navy font-bold text-xs shadow hover:bg-brand-gold-hover transition-colors shrink-0"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export CSV ({registrations.length})</span>
+                </button>
+              </div>
             </div>
 
             <div className="rounded-3xl glass-panel border border-brand-gold/20 overflow-hidden shadow-lg">
@@ -913,6 +1265,269 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* TAB: BACKGROUND MUSIC & AUDIO */}
+        {activeTab === 'audio' && (
+          <div className="space-y-6">
+            {/* Hidden Preview Audio Element */}
+            <audio
+              ref={previewAudioRef}
+              onEnded={() => setPreviewingTrackId(null)}
+              className="hidden"
+            />
+
+            {/* Header / Intro */}
+            <div className="p-6 rounded-3xl glass-panel border border-brand-gold/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-clash text-lg font-bold flex items-center gap-2 text-brand-navy dark:text-brand-gold-light">
+                  <Music className="w-5 h-5 text-brand-gold" />
+                  <span>Background Music & Soundscapes ({audioTracks.length})</span>
+                </h3>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Upload audio files (.mp3, .wav, .ogg, .m4a) to Supabase Storage CDN, arrange playback order, set default launch tracks, or remove tracks.
+                </p>
+              </div>
+              <div className="text-xs font-mono px-3 py-1.5 rounded-xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 shrink-0">
+                Storage: Supabase CDN (ufuq-media/audio)
+              </div>
+            </div>
+
+            {/* UPLOAD NEW TRACK CARD */}
+            <div className="p-6 rounded-3xl glass-panel border border-brand-gold/20 space-y-4">
+              <h4 className="font-clash font-bold text-sm text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-brand-gold" />
+                <span>Upload New Audio Track</span>
+              </h4>
+
+              <form onSubmit={handleUploadAudio} className="space-y-4 text-xs">
+                {/* File input / dropzone */}
+                <div className="p-4 rounded-2xl border-2 border-dashed border-brand-gold/30 bg-black/5 dark:bg-white/5 flex flex-col items-center justify-center text-center cursor-pointer hover:border-brand-gold/60 transition-colors">
+                  <label className="cursor-pointer flex flex-col items-center w-full">
+                    <Upload className="w-6 h-6 text-brand-gold mb-2" />
+                    <span className="font-semibold text-neutral-800 dark:text-neutral-200">
+                      {audioFile ? audioFile.name : 'Choose or drag & drop audio file (.mp3, .wav, .ogg, .m4a)'}
+                    </span>
+                    <span className="text-[10px] text-neutral-400 mt-0.5">
+                      {audioFile
+                        ? `${(audioFile.size / (1024 * 1024)).toFixed(2)} MB • Auto-detected Duration: ${Math.floor(audioDuration / 60)}:${(audioDuration % 60).toString().padStart(2, '0')}`
+                        : 'Max file size 35MB. Direct upload to high-speed CDN.'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="audio/*,.mp3,.wav,.ogg,.m4a"
+                      onChange={handleAudioFileSelect}
+                      className="hidden"
+                      disabled={isUploadingAudio}
+                    />
+                  </label>
+                </div>
+
+                {audioUploadError && (
+                  <p className="text-xs text-rose-500 font-medium">{audioUploadError}</p>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-semibold block mb-1">Track Title *</label>
+                    <input
+                      type="text"
+                      value={audioTitle}
+                      onChange={(e) => setAudioTitle(e.target.value)}
+                      placeholder="e.g. UFUQ ’26 — Ambient Theme"
+                      className="w-full p-2.5 rounded-xl border border-brand-gold/20 bg-white/50 dark:bg-black/40 text-xs"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1">Artist / Source</label>
+                    <input
+                      type="text"
+                      value={audioArtist}
+                      onChange={(e) => setAudioArtist(e.target.value)}
+                      placeholder="e.g. Alathurpadi Dars / ADSA"
+                      className="w-full p-2.5 rounded-xl border border-brand-gold/20 bg-white/50 dark:bg-black/40 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-neutral-700 dark:text-neutral-300">
+                    <input
+                      type="checkbox"
+                      checked={audioIsDefault}
+                      onChange={(e) => setAudioIsDefault(e.target.checked)}
+                      className="rounded accent-brand-gold"
+                    />
+                    <span>Set as Default Starting Track on Launch</span>
+                  </label>
+
+                  <button
+                    type="submit"
+                    disabled={!audioFile || isUploadingAudio}
+                    className="px-5 py-2.5 rounded-xl bg-brand-gold hover:bg-brand-gold-hover text-brand-navy font-semibold flex items-center gap-2 shadow-md transition-all disabled:opacity-40"
+                  >
+                    {isUploadingAudio ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Uploading to CDN...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        <span>Upload & Add to Playlist</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* PLAYLIST TRACKS TABLE */}
+            <div className="p-6 rounded-3xl glass-panel border border-brand-gold/20 space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-clash font-bold text-sm text-neutral-800 dark:text-neutral-200">
+                  Current Audio Playlist ({audioTracks.length})
+                </h4>
+                <span className="text-[10px] text-neutral-400">
+                  Use arrows to order • Auto-advances to next track
+                </span>
+              </div>
+
+              {audioTracks.length === 0 ? (
+                <div className="p-8 text-center text-neutral-400 text-xs">
+                  No audio tracks configured. Select an audio file above to upload to Supabase CDN.
+                </div>
+              ) : (
+                <div className="divide-y divide-brand-gold/15">
+                  {audioTracks.map((track, idx) => {
+                    const isPreviewing = previewingTrackId === track.id;
+                    const mins = Math.floor((track.duration || 0) / 60);
+                    const secs = ((track.duration || 0) % 60).toString().padStart(2, '0');
+
+                    return (
+                      <div
+                        key={track.id || idx}
+                        className={`py-3.5 flex items-center justify-between gap-3 text-xs ${
+                          !track.enabled ? 'opacity-50' : ''
+                        }`}
+                      >
+                        {/* Order & Preview Play */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              onClick={() => handleMoveTrack(idx, 'up')}
+                              disabled={idx === 0}
+                              className="p-1 rounded text-neutral-400 hover:text-brand-gold disabled:opacity-20"
+                              title="Move Up"
+                              aria-label="Move Up"
+                            >
+                              <ArrowUp className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleMoveTrack(idx, 'down')}
+                              disabled={idx === audioTracks.length - 1}
+                              className="p-1 rounded text-neutral-400 hover:text-brand-gold disabled:opacity-20"
+                              title="Move Down"
+                              aria-label="Move Down"
+                            >
+                              <ArrowDown className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          <button
+                            onClick={() => toggleTrackPreview(track)}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                              isPreviewing
+                                ? 'bg-brand-gold text-brand-navy shadow-md'
+                                : 'bg-black/5 dark:bg-white/10 hover:bg-brand-gold/20 text-neutral-700 dark:text-neutral-200'
+                            }`}
+                            title={isPreviewing ? 'Pause Preview' : 'Play Preview'}
+                          >
+                            {isPreviewing ? (
+                              <Pause className="w-3.5 h-3.5 fill-current" />
+                            ) : (
+                              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Title & Artist */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h5 className="font-semibold text-neutral-800 dark:text-neutral-200 truncate">
+                              {track.title}
+                            </h5>
+                            {track.isDefault && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] bg-brand-gold text-brand-navy font-bold flex items-center gap-1 shrink-0">
+                                <Star className="w-2.5 h-2.5 fill-current" /> Default
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-neutral-500 dark:text-neutral-400">
+                            <span>{track.artist || 'ADSA Soundscape'}</span>
+                            <span>•</span>
+                            <span className="font-mono">{mins}:{secs}</span>
+                            <span>•</span>
+                            <a
+                              href={track.src}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-brand-gold hover:underline flex items-center gap-0.5"
+                            >
+                              <span>{track.src.startsWith('http') ? 'CDN Link' : 'Local file'}</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
+                          </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {!track.isDefault && (
+                            <button
+                              onClick={() => handleSetDefaultTrack(track.id)}
+                              className="px-2 py-1 rounded-lg text-[10px] text-neutral-500 hover:text-brand-gold hover:bg-black/5 dark:hover:bg-white/5"
+                              title="Set as Default Launch Track"
+                            >
+                              Make Default
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => updateAudioTrack(track.id, { enabled: !track.enabled })}
+                            className={`p-1.5 rounded-lg ${
+                              track.enabled
+                                ? 'text-emerald-500 hover:bg-emerald-500/10'
+                                : 'text-neutral-400 hover:bg-neutral-500/10'
+                            }`}
+                            title={track.enabled ? 'Enabled in public playlist' : 'Disabled (hidden)'}
+                          >
+                            {track.enabled ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to delete "${track.title}" from the playlist?`)) {
+                                if (previewingTrackId === track.id && previewAudioRef.current) {
+                                  previewAudioRef.current.pause();
+                                  setPreviewingTrackId(null);
+                                }
+                                deleteAudioTrack(track.id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10"
+                            title="Delete Track"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* TAB 6: EVENT SETTINGS */}
         {activeTab === 'settings' && (
           <div className="max-w-2xl space-y-6">
@@ -1152,14 +1767,57 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <label className="font-semibold block mb-1">Photo URL (or /images/...)</label>
-                <input
-                  type="text"
-                  value={guestForm.photoUrl}
-                  onChange={(e) => setGuestForm({ ...guestForm, photoUrl: e.target.value })}
-                  placeholder="/images/Usthad.png or https://..."
-                  className="w-full p-2.5 rounded-xl border border-brand-gold/20 bg-white/50 dark:bg-black/40"
-                />
+                <label className="font-semibold block mb-1">Speaker Portrait / Photo</label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={guestForm.photoUrl}
+                      onChange={(e) => setGuestForm({ ...guestForm, photoUrl: e.target.value })}
+                      placeholder="/images/Usthad.png or Supabase CDN URL"
+                      className="flex-1 p-2.5 rounded-xl border border-brand-gold/20 bg-white/50 dark:bg-black/40 text-sm"
+                    />
+                    <label className={`cursor-pointer px-4 py-2.5 rounded-xl border border-brand-gold/40 bg-brand-gold/15 hover:bg-brand-gold/25 flex items-center gap-2 text-sm font-medium transition ${isUploadingPhoto ? 'opacity-50 pointer-events-none' : ''}`}>
+                      {isUploadingPhoto ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-brand-gold" />
+                          <span>Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 text-brand-gold" />
+                          <span>Upload File</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                        disabled={isUploadingPhoto}
+                      />
+                    </label>
+                  </div>
+                  {uploadError && (
+                    <p className="text-xs text-red-500 font-medium">{uploadError}</p>
+                  )}
+                  <p className="text-xs text-brand-sand/70 dark:text-gray-400">
+                    Upload directly to Supabase Storage, or enter an image URL / local path.
+                  </p>
+                  {guestForm.photoUrl && (
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-black/5 dark:bg-white/5 border border-brand-gold/15">
+                      <img
+                        src={guestForm.photoUrl}
+                        alt="Preview"
+                        className="w-10 h-10 rounded-full object-cover border border-brand-gold/30"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                      <span className="text-xs truncate flex-1 opacity-80">{guestForm.photoUrl}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>

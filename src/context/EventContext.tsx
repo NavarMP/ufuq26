@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { EventInfo, ScheduleSession, Guest, FAQ, Registration, RegistrationField } from '@/types';
-import { initialEventInfo, initialScheduleSessions, initialGuests, initialFAQs, defaultRegistrationFields } from '@/lib/initialData';
+import { EventInfo, ScheduleSession, Guest, FAQ, Registration, RegistrationField, AudioTrack } from '@/types';
+import { initialEventInfo, initialScheduleSessions, initialGuests, initialFAQs, defaultRegistrationFields, initialAudioTracks } from '@/lib/initialData';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
 
@@ -37,7 +37,15 @@ interface EventContextType {
   updateFAQ: (id: string, faq: Partial<FAQ>) => Promise<void>;
   deleteFAQ: (id: string) => Promise<void>;
 
+  // Audio Tracks CRUD
+  audioTracks: AudioTrack[];
+  addAudioTrack: (track: Omit<AudioTrack, 'id'>) => Promise<void>;
+  updateAudioTrack: (id: string, track: Partial<AudioTrack>) => Promise<void>;
+  deleteAudioTrack: (id: string) => Promise<void>;
+  reorderAudioTracks: (tracks: AudioTrack[]) => Promise<void>;
+
   // Registrations Admin
+  fetchRegistrations: () => Promise<void>;
   updateRegistrationStatus: (id: string, status: 'pending' | 'confirmed' | 'cancelled') => Promise<void>;
   deleteRegistration: (id: string) => Promise<void>;
   exportRegistrationsCSV: () => void;
@@ -55,6 +63,7 @@ const STORAGE_KEYS = {
   FAQS: 'ufuq_faqs_v1',
   REGISTRATIONS: 'ufuq_registrations_v1',
   FIELDS: 'ufuq_reg_fields_v1',
+  AUDIO_TRACKS: 'ufuq_audio_tracks_v1',
 };
 
 export function EventProvider({ children }: { children: React.ReactNode }) {
@@ -64,6 +73,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   const [faqs, setFaqs] = useState<FAQ[]>(initialFAQs);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[]>(defaultRegistrationFields);
+  const [audioTracks, setAudioTracks] = useState<AudioTrack[]>(initialAudioTracks);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -90,6 +100,9 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
       const storedFields = localStorage.getItem(STORAGE_KEYS.FIELDS);
       if (storedFields) setRegistrationFields(JSON.parse(storedFields));
+
+      const storedAudio = localStorage.getItem(STORAGE_KEYS.AUDIO_TRACKS);
+      if (storedAudio) setAudioTracks(JSON.parse(storedAudio));
     } catch (err) {
       console.warn('Could not read from storage, using initial data', err);
     } finally {
@@ -130,6 +143,17 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
           remoteFaqs.sort((a, b) => a.order - b.order);
           setFaqs(remoteFaqs);
           persist(STORAGE_KEYS.FAQS, remoteFaqs);
+        }
+
+        const audioSnap = await getDocs(collection(db, 'audio_tracks'));
+        if (!audioSnap.empty) {
+          const remoteTracks: AudioTrack[] = [];
+          audioSnap.forEach((docSnap) => {
+            remoteTracks.push({ id: docSnap.id, ...(docSnap.data() as any) });
+          });
+          remoteTracks.sort((a, b) => a.order - b.order);
+          setAudioTracks(remoteTracks);
+          persist(STORAGE_KEYS.AUDIO_TRACKS, remoteTracks);
         }
       } catch (e) {
         // Firestore rules or offline: keep using local cache seamlessly
@@ -317,7 +341,72 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {}
   };
 
+  // Admin: Audio Tracks
+  const addAudioTrack = async (trackData: Omit<AudioTrack, 'id'>) => {
+    const newId = `track-${Date.now()}`;
+    const newTrack: AudioTrack = {
+      ...trackData,
+      id: newId,
+      uploadedAt: new Date().toISOString(),
+    };
+    const updated = [...audioTracks, newTrack].sort((a, b) => a.order - b.order);
+    setAudioTracks(updated);
+    persist(STORAGE_KEYS.AUDIO_TRACKS, updated);
+    try {
+      await setDoc(doc(db, 'audio_tracks', newId), newTrack);
+    } catch (e) {}
+  };
+
+  const updateAudioTrack = async (id: string, updates: Partial<AudioTrack>) => {
+    const updated = audioTracks.map((t) => (t.id === id ? { ...t, ...updates } : t));
+    setAudioTracks(updated);
+    persist(STORAGE_KEYS.AUDIO_TRACKS, updated);
+    try {
+      await updateDoc(doc(db, 'audio_tracks', id), updates);
+    } catch (e) {}
+  };
+
+  const deleteAudioTrack = async (id: string) => {
+    const updated = audioTracks.filter((t) => t.id !== id);
+    setAudioTracks(updated);
+    persist(STORAGE_KEYS.AUDIO_TRACKS, updated);
+    try {
+      await deleteDoc(doc(db, 'audio_tracks', id));
+    } catch (e) {}
+  };
+
+  const reorderAudioTracks = async (reordered: AudioTrack[]) => {
+    const normalized = reordered.map((t, idx) => ({ ...t, order: idx + 1 }));
+    setAudioTracks(normalized);
+    persist(STORAGE_KEYS.AUDIO_TRACKS, normalized);
+    try {
+      for (const track of normalized) {
+        await setDoc(doc(db, 'audio_tracks', track.id), track);
+      }
+    } catch (e) {}
+  };
+
   // Admin: Registrations
+  const fetchRegistrations = async () => {
+    try {
+      const snap = await getDocs(collection(db, 'registrations'));
+      if (!snap.empty) {
+        const remoteRegs: Registration[] = [];
+        snap.forEach((docSnap) => {
+          remoteRegs.push({ id: docSnap.id, ...(docSnap.data() as any) });
+        });
+        remoteRegs.sort(
+          (a, b) =>
+            new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
+        );
+        setRegistrations(remoteRegs);
+        persist(STORAGE_KEYS.REGISTRATIONS, remoteRegs);
+      }
+    } catch (err) {
+      console.warn('Could not sync registrations from Firestore (requires admin auth):', err);
+    }
+  };
+
   const updateRegistrationStatus = async (id: string, status: 'pending' | 'confirmed' | 'cancelled') => {
     const updated = registrations.map((r) => (r.id === id ? { ...r, status } : r));
     setRegistrations(updated);
@@ -386,12 +475,14 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       setFaqs(initialFAQs);
       setRegistrations([]);
       setRegistrationFields(defaultRegistrationFields);
+      setAudioTracks(initialAudioTracks);
       localStorage.removeItem(STORAGE_KEYS.EVENT_INFO);
       localStorage.removeItem(STORAGE_KEYS.SCHEDULE);
       localStorage.removeItem(STORAGE_KEYS.GUESTS);
       localStorage.removeItem(STORAGE_KEYS.FAQS);
       localStorage.removeItem(STORAGE_KEYS.REGISTRATIONS);
       localStorage.removeItem(STORAGE_KEYS.FIELDS);
+      localStorage.removeItem(STORAGE_KEYS.AUDIO_TRACKS);
     }
   };
 
@@ -404,6 +495,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         faqs,
         registrations,
         registrationFields,
+        audioTracks,
         isLoading,
         isSaving,
         submitRegistration,
@@ -417,6 +509,11 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         addFAQ,
         updateFAQ,
         deleteFAQ,
+        addAudioTrack,
+        updateAudioTrack,
+        deleteAudioTrack,
+        reorderAudioTracks,
+        fetchRegistrations,
         updateRegistrationStatus,
         deleteRegistration,
         exportRegistrationsCSV,

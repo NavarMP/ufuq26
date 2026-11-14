@@ -1,4 +1,4 @@
-import { EventInfo, ScheduleSession, Guest, FAQ, RegistrationField } from '@/types';
+import { EventInfo, ScheduleSession, Guest, FAQ, RegistrationField, AudioTrack } from '@/types';
 
 export const initialEventInfo: EventInfo = {
   id: 'ufuq-2026',
@@ -418,5 +418,18 @@ export const defaultRegistrationFields: RegistrationField[] = [
     placeholder: { en: '+91 ...', ml: '+91 ...', ar: '+91 ...' },
     order: 7,
     enabled: true,
+  },
+];
+
+export const initialAudioTracks: AudioTrack[] = [
+  {
+    id: 'track-1',
+    title: 'UFUQ ’26 — Ambient Theme',
+    artist: 'Alathurpadi Dars',
+    src: '/bg-music.mp3',
+    duration: 392,
+    order: 1,
+    enabled: true,
+    isDefault: true,
   },
 ];

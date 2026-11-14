@@ -135,5 +135,19 @@
     "installMessage": "Add this app to your home screen for quick access and offline support.",
     "install": "Install",
     "dismiss": "Not now"
+  },
+  "audio": {
+    "title": "Ambient Soundscape",
+    "track": "UFUQ ’26 Theme",
+    "play": "Play background music",
+    "pause": "Pause background music",
+    "next": "Next track",
+    "previous": "Previous track",
+    "playlist": "Playlist",
+    "volume": "Volume",
+    "mute": "Mute audio",
+    "unmute": "Unmute audio",
+    "spectrum": "Live Audio Spectrum",
+    "autoplayHint": "Click anywhere to enable ambient sound"
   }
 }

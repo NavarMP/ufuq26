@@ -108,3 +108,15 @@ export interface AdminUser {
   role: 'admin' | 'editor';
   displayName?: string;
 }
+
+export interface AudioTrack {
+  id: string;
+  title: string;
+  artist?: string;
+  src: string;
+  duration?: number;
+  order: number;
+  enabled: boolean;
+  isDefault?: boolean;
+  uploadedAt?: string;
+}
