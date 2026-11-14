@@ -41,12 +41,10 @@ jobs:
         run: npm run build
 
       - name: Deploy to Firebase Hosting
-        if: ${{ env.FIREBASE_SERVICE_ACCOUNT_KEY != '' }}
-        env:
-          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_UFUQ_26 }}
+        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_UFUQ_26 != '' }}
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_UFUQ_26 }}
           channelId: live
-          projectId: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          projectId: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'ufuq26-adsa' }}

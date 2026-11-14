@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useEvent } from '@/context/EventContext';
 import { useApp } from '@/context/AppContext';
+import { getFallbackAssistantReply } from '@/lib/assistantFallback';
 import { MessageSquare, X, Send, Bot, User, Sparkles, AlertCircle } from 'lucide-react';
 
 interface Message {
@@ -56,25 +57,43 @@ export default function AIAssistant() {
         }),
       });
 
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', text: data.reply || t('assistant.noAnswer') },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', text: t('assistant.error') },
-        ]);
+        if (data?.reply) {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', text: data.reply },
+          ]);
+          return;
+        }
       }
-    } catch (err) {
+
+      // Seamless fallback for static hosting / network issues
+      const fallbackReply = getFallbackAssistantReply(
+        textToSend,
+        language,
+        eventInfo,
+        schedule,
+        faqs,
+        guests
+      );
       setMessages((prev) => [
         ...prev,
-        {
-          role: 'assistant',
-          text: "I am having difficulty connecting right now. Please explore the FAQ or contact the ADSA organizers directly.",
-        },
+        { role: 'assistant', text: fallbackReply },
+      ]);
+    } catch {
+      const fallbackReply = getFallbackAssistantReply(
+        textToSend,
+        language,
+        eventInfo,
+        schedule,
+        faqs,
+        guests
+      );
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', text: fallbackReply },
       ]);
     } finally {
       setIsLoading(false);
