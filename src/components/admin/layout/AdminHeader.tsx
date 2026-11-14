@@ -16,6 +16,8 @@ import {
   Settings,
   LogOut,
   DoorOpen,
+  Image as ImageIcon,
+  Bell,
 } from 'lucide-react';
 import AdminThemeSwitcher from './AdminThemeSwitcher';
 import { AdminTab } from './AdminSidebar';
@@ -32,11 +34,13 @@ interface AdminHeaderProps {
 const tabTitles: Record<AdminTab, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
   dashboard: { label: 'Executive Dashboard', icon: Shield },
   registrations: { label: 'Delegate Registrations', icon: FileText },
+  notifications: { label: 'Dispatch & Notification Hub', icon: Bell },
   dars: { label: 'SUFFA Dars & Logins', icon: Building2 },
   gate: { label: 'Campus Gate & Check-in', icon: DoorOpen },
   sessions: { label: 'Schedule & Program Matrix', icon: Calendar },
   guests: { label: 'Faculty & Guest Speakers', icon: Users },
   faqs: { label: 'Knowledge Base & FAQs', icon: HelpCircle },
+  gallery: { label: 'Gallery Showcase', icon: ImageIcon },
   audio: { label: 'Background Audio Studio', icon: Music },
   settings: { label: 'Event Configuration', icon: Settings },
 };

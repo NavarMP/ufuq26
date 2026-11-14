@@ -14,31 +14,54 @@ import {
   X,
   Phone,
   Printer,
+  Send,
+  Edit3,
+  MessageSquare,
+  DoorOpen,
+  CheckSquare,
+  Sparkles,
 } from 'lucide-react';
+import UniversalBulkDock from '../shared/UniversalBulkDock';
 
 interface BulkActionBarProps {
   selectedCount: number;
+  totalFilteredCount?: number;
+  isAllFilteredSelected?: boolean;
+  onSelectAllFiltered?: () => void;
   onClearSelection: () => void;
+  onInvertSelection?: () => void;
+  onOpenBatchEdit?: () => void;
+  onOpenWhatsApp?: () => void;
   onBulkStatus: (status: 'pending' | 'confirmed' | 'cancelled') => void;
+  onBulkGateStatus?: (gateStatus: 'inside' | 'outside') => void;
   onBulkArchive: () => void;
   onBulkUnarchive: () => void;
   onBulkDelete: () => void;
   onBulkExport: () => void;
   onCopyPhoneNumbers: () => void;
   onBulkPrintBadges?: () => void;
+  onBulkSendNotice?: () => void;
   isArchivedView: boolean;
 }
 
 export default function BulkActionBar({
   selectedCount,
+  totalFilteredCount,
+  isAllFilteredSelected,
+  onSelectAllFiltered,
   onClearSelection,
+  onInvertSelection,
+  onOpenBatchEdit,
+  onOpenWhatsApp,
   onBulkStatus,
+  onBulkGateStatus,
   onBulkArchive,
   onBulkUnarchive,
   onBulkDelete,
   onBulkExport,
   onCopyPhoneNumbers,
   onBulkPrintBadges,
+  onBulkSendNotice,
   isArchivedView,
 }: BulkActionBarProps) {
   const [copiedPhones, setCopiedPhones] = useState(false);
@@ -51,122 +74,144 @@ export default function BulkActionBar({
     setTimeout(() => setCopiedPhones(false), 2000);
   };
 
-  return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 max-w-4xl w-[92%] sm:w-auto animate-in slide-in-from-bottom-5 duration-200">
-      <div className="bg-neutral-900/95 dark:bg-black/95 text-white backdrop-blur-md px-4 py-3 rounded-2xl border border-brand-gold/40 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-xs">
-        {/* Count & Clear */}
-        <div className="flex items-center gap-2 pr-3 border-r border-white/10">
-          <span className="font-mono font-bold text-brand-gold">
-            {selectedCount}
-          </span>
-          <span className="text-neutral-300 text-[11px]">selected</span>
+  const primaryActions = (
+    <>
+      {/* Status Buttons */}
+      <button
+        onClick={() => onBulkStatus('confirmed')}
+        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-semibold text-[11px] border border-emerald-500/30 transition-colors"
+        title="Mark selected as Confirmed"
+      >
+        <CheckCircle2 className="w-3 h-3" />
+        <span>Confirm</span>
+      </button>
+
+      <button
+        onClick={() => onBulkStatus('pending')}
+        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-semibold text-[11px] border border-amber-500/30 transition-colors"
+        title="Mark selected as Pending"
+      >
+        <Clock className="w-3 h-3" />
+        <span>Pending</span>
+      </button>
+
+      <button
+        onClick={() => onBulkStatus('cancelled')}
+        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-semibold text-[11px] border border-rose-500/30 transition-colors"
+        title="Mark selected as Cancelled"
+      >
+        <XCircle className="w-3 h-3" />
+        <span>Cancel</span>
+      </button>
+
+      {/* WhatsApp Dispatch Hub Trigger */}
+      {onOpenWhatsApp && (
+        <button
+          onClick={onOpenWhatsApp}
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-semibold text-[11px] border border-emerald-500/30 transition-colors"
+          title="WhatsApp Dispatch & Broadcast Hub"
+        >
+          <MessageSquare className="w-3 h-3" />
+          <span>WhatsApp Hub</span>
+        </button>
+      )}
+
+      {/* Print Badges */}
+      {onBulkPrintBadges && (
+        <button
+          onClick={onBulkPrintBadges}
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-brand-gold hover:bg-brand-gold-hover text-brand-navy font-bold text-[11px] shadow transition-transform active:scale-95"
+          title="Print Plastic Card ID Badges"
+        >
+          <Printer className="w-3 h-3" />
+          <span>Print Badges</span>
+        </button>
+      )}
+    </>
+  );
+
+  const secondaryActions = (
+    <div className="flex flex-col gap-1 text-xs">
+      {/* Copy WhatsApp Numbers */}
+      <button
+        onClick={handleCopyPhones}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 text-neutral-200 text-left transition-colors"
+      >
+        {copiedPhones ? (
+          <Check className="w-3.5 h-3.5 text-emerald-400" />
+        ) : (
+          <Phone className="w-3.5 h-3.5 text-emerald-400" />
+        )}
+        <span>{copiedPhones ? 'Copied Phone CSV!' : 'Copy Phone Numbers CSV'}</span>
+      </button>
+
+      {/* Gate Status Toggles */}
+      {onBulkGateStatus && (
+        <>
           <button
-            onClick={onClearSelection}
-            className="p-1 hover:bg-white/10 rounded-lg text-neutral-400 hover:text-white transition-colors"
-            title="Deselect all"
+            onClick={() => onBulkGateStatus('inside')}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 text-emerald-400 text-left transition-colors"
           >
-            <X className="w-3.5 h-3.5" />
+            <DoorOpen className="w-3.5 h-3.5" />
+            <span>Mark Inside Campus</span>
           </button>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Status Buttons */}
           <button
-            onClick={() => onBulkStatus('confirmed')}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 font-semibold text-[11px] border border-emerald-500/30 transition-colors"
-            title="Mark selected as Confirmed"
+            onClick={() => onBulkGateStatus('outside')}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 text-neutral-300 text-left transition-colors"
           >
-            <CheckCircle2 className="w-3 h-3" />
-            <span>Confirm</span>
+            <DoorOpen className="w-3.5 h-3.5" />
+            <span>Mark Outside Campus</span>
           </button>
+        </>
+      )}
 
-          <button
-            onClick={() => onBulkStatus('pending')}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-semibold text-[11px] border border-amber-500/30 transition-colors"
-            title="Mark selected as Pending"
-          >
-            <Clock className="w-3 h-3" />
-            <span>Pending</span>
-          </button>
+      {/* Omnichannel Broadcast Notice */}
+      {onBulkSendNotice && (
+        <button
+          onClick={onBulkSendNotice}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 text-brand-gold text-left transition-colors"
+        >
+          <Send className="w-3.5 h-3.5" />
+          <span>Broadcast Omnichannel Notice</span>
+        </button>
+      )}
 
-          <button
-            onClick={() => onBulkStatus('cancelled')}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-semibold text-[11px] border border-rose-500/30 transition-colors"
-            title="Mark selected as Cancelled"
-          >
-            <XCircle className="w-3 h-3" />
-            <span>Cancel</span>
-          </button>
-
-          {/* Copy WhatsApp Numbers */}
-          <button
-            onClick={handleCopyPhones}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-neutral-200 font-semibold text-[11px] transition-colors"
-            title="Copy clean phone numbers for WhatsApp broadcast"
-          >
-            {copiedPhones ? (
-              <Check className="w-3 h-3 text-emerald-400" />
-            ) : (
-              <Phone className="w-3 h-3 text-emerald-400" />
-            )}
-            <span>{copiedPhones ? 'Copied!' : 'Copy Numbers'}</span>
-          </button>
-
-          {/* Export Selected CSV */}
-          <button
-            onClick={onBulkExport}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-neutral-200 font-semibold text-[11px] transition-colors"
-            title="Export selected registrations to CSV"
-          >
-            <Download className="w-3 h-3 text-brand-gold" />
-            <span>Export</span>
-          </button>
-
-          {/* Batch Print Badges */}
-          {onBulkPrintBadges && (
-            <button
-              onClick={onBulkPrintBadges}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-brand-gold hover:bg-brand-gold-hover text-brand-navy font-bold text-[11px] shadow transition-transform hover:scale-105 active:scale-95"
-              title="Print Plastic Card ID Badges for selected attendees"
-            >
-              <Printer className="w-3 h-3" />
-              <span>Print Badges</span>
-            </button>
-          )}
-
-          {/* Archive / Restore Selected */}
-          {isArchivedView ? (
-            <button
-              onClick={onBulkUnarchive}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-emerald-500/20 text-emerald-400 font-semibold text-[11px] transition-colors"
-              title="Restore selected to active pool"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>Restore</span>
-            </button>
-          ) : (
-            <button
-              onClick={onBulkArchive}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-amber-500/20 text-amber-400 font-semibold text-[11px] transition-colors"
-              title="Archive selected registrations (safe)"
-            >
-              <Archive className="w-3 h-3" />
-              <span>Archive</span>
-            </button>
-          )}
-
-          {/* Delete Selected (Permanent) */}
-          <button
-            onClick={onBulkDelete}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-semibold text-[11px] border border-rose-500/30 transition-colors"
-            title="Permanently delete selected records"
-          >
-            <Trash2 className="w-3 h-3" />
-            <span>Delete</span>
-          </button>
-        </div>
-      </div>
+      {/* Archive / Restore */}
+      {isArchivedView ? (
+        <button
+          onClick={onBulkUnarchive}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 text-emerald-400 text-left transition-colors"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+          <span>Restore to Active</span>
+        </button>
+      ) : (
+        <button
+          onClick={onBulkArchive}
+          className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 text-amber-400 text-left transition-colors"
+        >
+          <Archive className="w-3.5 h-3.5" />
+          <span>Archive Selected</span>
+        </button>
+      )}
     </div>
+  );
+
+  return (
+    <UniversalBulkDock
+      selectedCount={selectedCount}
+      totalFilteredCount={totalFilteredCount}
+      isAllFilteredSelected={isAllFilteredSelected}
+      onSelectAllFiltered={onSelectAllFiltered}
+      onClearSelection={onClearSelection}
+      onInvertSelection={onInvertSelection}
+      onOpenBatchEdit={onOpenBatchEdit}
+      onOpenExport={onBulkExport}
+      onDelete={onBulkDelete}
+      primaryActions={primaryActions}
+      secondaryActions={secondaryActions}
+      deleteLabel="Purge"
+      itemLabel="delegates"
+    />
   );
 }

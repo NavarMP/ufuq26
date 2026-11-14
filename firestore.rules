@@ -42,6 +42,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Gallery Showcase: Anyone can read published items, only admin can write or see drafts
+    match /gallery/{itemId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow write: if isAdmin();
+    }
+
     // SUFFA Dars Directory: Anyone can read, only admin can create/update/delete
     match /dars/{darsId} {
       allow read: if true;

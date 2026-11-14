@@ -6,6 +6,7 @@ import HeroSection from '@/components/HeroSection';
 import AboutSection from '@/components/AboutSection';
 import ScheduleSection from '@/components/ScheduleSection';
 import GuestsSection from '@/components/GuestsSection';
+import GallerySection from '@/components/GallerySection';
 import LocationSection from '@/components/LocationSection';
 import RegistrationSection from '@/components/RegistrationSection';
 import FAQSection from '@/components/FAQSection';
@@ -59,6 +60,7 @@ export default function HomePage() {
         <AboutSection />
         <ScheduleSection />
         <GuestsSection />
+        <GallerySection />
         <LocationSection />
         <RegistrationSection />
         <FAQSection />

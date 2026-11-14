@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" role="img" aria-label="UFUQ '26 app icon">
+  <rect width="1080" height="1080" fill="#101d32"/>
+  <g transform="translate(172.8 172.8) scale(.68)">
+    <g fill="#f5f0e8">
+      <rect x="663.91" y="110.37" width="76.43" height="535" transform="translate(-61.55 607.16) rotate(-45)"/>
+      <path d="M702.13,485.96l-135.11,135.11,81.07,81.07-108.08,108.08-108.09-108.09,81.06-81.06-135.11-135.11-81.06,81.06-27.03-27.03,189.15-189.15,81.07,81.07,54.04-54.04-135.11-135.11-297.24,297.24,378.3,378.3,297.24-297.24-135.11-135.11ZM377.87,648.09l-27.02-27.02,27.02-27.02,27.02,27.02-27.02,27.02ZM702.13,648.1l-27.03-27.03,27.03-27.03,27.03,27.03-27.03,27.03Z"/>
+    </g>
+    <g fill="#527a70">
+      <rect x="582.85" y="420.72" width="76.43" height="76.43" transform="translate(-142.61 573.58) rotate(-45)"/>
+      <rect x="501.79" y="501.79" width="76.43" height="76.43" transform="translate(-223.68 540) rotate(-45)"/>
+      <rect x="420.72" y="420.73" width="76.43" height="76.43" transform="translate(-190.1 458.94) rotate(-45)"/>
+    </g>
+    <rect x="501.79" y="663.92" width="76.43" height="76.43" transform="translate(-338.32 587.49) rotate(-45)" fill="#c9a45c"/>
+  </g>
+</svg>

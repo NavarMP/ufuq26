@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import BrandLogo from '@/components/BrandLogo';
 import {
   Shield,
   Mail,
@@ -79,10 +79,8 @@ export default function AdminLoginGate({
       <div className="w-full max-w-md p-8 sm:p-10 rounded-3xl glass-panel bg-white/80 dark:bg-[#0c1220]/80 border border-brand-gold/30 shadow-2xl text-center space-y-6 relative z-10 backdrop-blur-xl">
         {/* Brand Icon */}
         <div className="relative mx-auto w-20 h-20">
-          <div className="w-20 h-20 rounded-3xl bg-brand-navy p-3 flex items-center justify-center border-2 border-brand-gold/40 shadow-xl">
-            <Image
-              src="/images/UFUQ-Logo.svg"
-              alt="UFUQ '26"
+          <div className="w-20 h-20 rounded-3xl bg-[var(--logo-tile)] p-3 flex items-center justify-center border-2 border-brand-gold/40 shadow-xl">
+            <BrandLogo
               width={48}
               height={48}
               className="object-contain"

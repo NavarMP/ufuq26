@@ -12,6 +12,7 @@ export type ReminderTimingPreset =
   | '1_day_before'    // 24 hours before (09:00 AM)
   | 'camp_morning'    // Day of event at 07:00 AM
   | '2_hours_before'  // 2 hours prior to start
+  | '1_hour_before'   // 1 hour prior to session
   | '30_min_before'   // 30 minutes prior to session
   | 'custom';         // Custom date & time
 

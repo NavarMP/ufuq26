@@ -2,11 +2,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
-import { Download, Check, Copy } from 'lucide-react';
+import { Download, Check, Copy, Code2 } from 'lucide-react';
 import { useShare } from '@/hooks/useShare';
 import { useApp } from '@/context/AppContext';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
 import { useAudioFeedback } from '@/hooks/useAudioFeedback';
+import { formatQrToSvg } from '@/lib/export/formatters/svgFormatter';
+import { createTextBlob, triggerBlobDownload } from '@/lib/export/utils/downloadHelper';
 import toast from 'react-hot-toast';
 
 interface QRCodeViewProps {
@@ -75,7 +77,7 @@ export default function QRCodeView({ url, className = '' }: QRCodeViewProps) {
         // Draw UFUQ logo image
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.src = '/images/UFUQ-Logo.svg';
+        img.src = '/images/UFUQ-Logo-dark.svg';
         img.onload = () => {
           ctx.drawImage(img, center - logoSize / 2 + 8, center - logoSize / 2 + 8, logoSize - 16, logoSize - 16);
           ctx.restore();
@@ -112,6 +114,25 @@ export default function QRCodeView({ url, className = '' }: QRCodeViewProps) {
       toast.error('Failed to download QR code');
     } finally {
       setTimeout(() => setDownloading(false), 1500);
+    }
+  };
+
+  const handleDownloadSvg = async () => {
+    try {
+      const svg = await formatQrToSvg({
+        text: targetUrl,
+        darkColor: '#101d32',
+        lightColor: '#ffffff',
+        width: 600,
+        margin: 2,
+      });
+      const blob = createTextBlob(svg, 'image/svg+xml', false);
+      triggerBlobDownload(blob, `UFUQ26-VectorQR-${Date.now()}.svg`);
+      triggerSuccess();
+      playSuccessChime();
+      toast.success('Lossless Vector SVG QR downloaded!');
+    } catch {
+      toast.error('Failed to generate Vector SVG');
     }
   };
 
@@ -158,16 +179,26 @@ export default function QRCodeView({ url, className = '' }: QRCodeViewProps) {
           type="button"
           onClick={handleDownload}
           disabled={downloading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-gold text-brand-navy hover:bg-brand-gold-hover text-xs font-bold shadow-md shadow-brand-gold/20 transition-all active:scale-95"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-gold text-brand-navy hover:bg-brand-gold-hover text-xs font-bold shadow-md shadow-brand-gold/20 transition-all active:scale-95"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>{downloading ? 'Saving...' : t('share.qr.download') || 'Download QR'}</span>
+          <span>{downloading ? 'Saving...' : 'PNG'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleDownloadSvg}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl glass-panel border border-brand-gold/30 hover:border-brand-gold text-neutral-800 dark:text-neutral-200 text-xs font-semibold transition-all active:scale-95"
+          title="Download Lossless Vector SVG for Banner Printing"
+        >
+          <Code2 className="w-3.5 h-3.5 text-brand-gold" />
+          <span>Vector SVG</span>
         </button>
 
         <button
           type="button"
           onClick={handleCopyImage}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-panel border border-brand-gold/30 hover:border-brand-gold text-neutral-800 dark:text-neutral-200 text-xs font-semibold transition-all active:scale-95"
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl glass-panel border border-brand-gold/30 hover:border-brand-gold text-neutral-800 dark:text-neutral-200 text-xs font-semibold transition-all active:scale-95"
         >
           {copiedImage ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-brand-gold" />}
           <span>{copiedImage ? 'Copied' : 'Copy'}</span>

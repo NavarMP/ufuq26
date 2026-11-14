@@ -19,6 +19,7 @@ interface AdminShellProps {
     guests: number;
     faqs: number;
     audioTracks: number;
+    galleryItems?: number;
   };
   children: React.ReactNode;
 

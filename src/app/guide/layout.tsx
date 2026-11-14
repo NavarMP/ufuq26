@@ -10,9 +10,9 @@ export const metadata: Metadata = {
       'Rooted in Ilm. Ready for the World. Explore the 7-day schedule, student registration, campus transit routes, and delegate readiness checklist.',
     images: [
       {
-        url: '/images/UFUQ-Logo.svg',
-        width: 1200,
-        height: 630,
+        url: '/images/UFUQ-Logo-app.svg',
+        width: 1080,
+        height: 1080,
         alt: 'UFUQ ’26 Guide',
       },
     ],

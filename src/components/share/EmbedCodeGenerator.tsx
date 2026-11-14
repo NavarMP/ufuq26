@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
+import BrandLogo from '@/components/BrandLogo';
 import { Copy, Check } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useHapticFeedback } from '@/hooks/useHapticFeedback';
@@ -15,7 +15,7 @@ export default function EmbedCodeGenerator() {
   const [copied, setCopied] = useState(false);
 
   const embedSnippet = `<a href="https://alathurpadidars.in" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:12px;padding:10px 18px;background:#101d32;color:#f5f0e8;border:1px solid #c9a45c;border-radius:16px;text-decoration:none;font-family:sans-serif;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,0.25);">
-  <img src="https://alathurpadidars.in/images/UFUQ-Logo.svg" alt="UFUQ '26" width="28" height="28" style="object-contain" />
+  <img src="https://alathurpadidars.in/images/UFUQ-Logo-app.svg" alt="UFUQ '26" width="28" height="28" style="object-fit:contain;border-radius:50%;" />
   <div>
     <strong style="display:block;color:#f5ad1f;font-size:14px;letter-spacing:0.5px;">UFUQ ’26 — أُفُق</strong>
     <span style="font-size:11px;opacity:0.85;">Dec 24–30, 2026 · Alathurpadi Dars Campus</span>
@@ -56,7 +56,7 @@ export default function EmbedCodeGenerator() {
           className="inline-flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-brand-navy text-neutral-100 border border-brand-gold shadow-lg hover:scale-105 transition-transform"
         >
           <div className="w-7 h-7 relative shrink-0">
-            <Image src="/images/UFUQ-Logo.svg" alt="UFUQ '26" fill className="object-contain" />
+            <BrandLogo variant="inverse" label="UFUQ '26" className="w-full h-full object-contain" />
           </div>
           <div>
             <div className="font-clash font-bold text-xs text-brand-gold leading-tight">UFUQ ’26 — أُفُق</div>

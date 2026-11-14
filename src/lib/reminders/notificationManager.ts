@@ -78,8 +78,8 @@ export function dispatchBrowserNotification(title: string, options?: Notificatio
 
   try {
     const notif = new Notification(title, {
-      icon: '/images/UFUQ-Logo.svg',
-      badge: '/images/UFUQ-Logo.svg',
+      icon: '/images/UFUQ-Logo-app.svg',
+      badge: '/images/UFUQ-Logo-badge.svg',
       silent: false,
       ...options,
     });

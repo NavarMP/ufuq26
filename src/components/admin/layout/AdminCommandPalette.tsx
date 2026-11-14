@@ -20,6 +20,7 @@ import {
   Sparkles,
   Shield,
   X,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { AdminTab } from './AdminSidebar';
 import { ScheduleSession, Guest, FAQ, SuffaDars, Registration } from '@/types';
@@ -129,6 +130,14 @@ export default function AdminCommandPalette({
         category: 'Navigation',
         icon: HelpCircle,
         handler: () => onSelectTab('faqs'),
+      },
+      {
+        id: 'nav-gallery',
+        title: 'Go to Gallery Showcase',
+        subtitle: 'Curate photos, video reels, and historical moments',
+        category: 'Navigation',
+        icon: ImageIcon,
+        handler: () => onSelectTab('gallery'),
       },
       {
         id: 'nav-audio',

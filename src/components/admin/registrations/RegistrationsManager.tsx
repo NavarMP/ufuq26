@@ -12,7 +12,17 @@ import RegistrationTable from './RegistrationTable';
 import RegistrationDetailDrawer from './RegistrationDetailDrawer';
 import RegistrationFormModal from './RegistrationFormModal';
 import BulkActionBar from './BulkActionBar';
+import BatchNoticeModal from './BatchNoticeModal';
 import BatchCardPrintModal from '@/components/badge/BatchCardPrintModal';
+import { useExport } from '@/hooks/useExport';
+import UniversalExportModal from '@/components/export/UniversalExportModal';
+import {
+  ExportColumn,
+  ExportPreset,
+  UniversalExportConfig,
+  ExportFormat,
+  executeExport,
+} from '@/lib/export';
 import {
   cleanPhoneNumber,
   isToday,
@@ -82,6 +92,7 @@ export default function RegistrationsManager({
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [inspectingRegistration, setInspectingRegistration] = useState<Registration | null>(null);
   const [isBatchPrintModalOpen, setIsBatchPrintModalOpen] = useState(false);
+  const [isBatchNoticeModalOpen, setIsBatchNoticeModalOpen] = useState(false);
 
   // Dars Lookup Map & Counts
   const { darsNameMap, darsDistrictMap, darsCounts } = useMemo(() => {
@@ -376,19 +387,113 @@ export default function RegistrationsManager({
     }
   };
 
+  const {
+    isOpen: isExportModalOpen,
+    activeConfig: exportModalConfig,
+    isExporting,
+    openExport,
+    closeExport,
+    runExport,
+  } = useExport<Registration>();
+
+  const registrationColumns: ExportColumn<Registration>[] = useMemo(
+    () => [
+      { id: 'id', header: 'Reference ID', accessor: (r) => r.id, width: 14, defaultVisible: true },
+      { id: 'fullName', header: 'Student Name', accessor: (r) => r.fullName, width: 25, defaultVisible: true },
+      { id: 'phone', header: 'Phone Number', accessor: (r) => r.phone, width: 16, defaultVisible: true, isPii: true },
+      { id: 'email', header: 'Email Address', accessor: (r) => r.email || '', width: 24, defaultVisible: true, isPii: true },
+      { id: 'darsRegNo', header: 'Dars Reg No', accessor: (r) => r.darsRegNo || '', width: 12, defaultVisible: true },
+      { id: 'darsName', header: 'Dars Institution', accessor: (r) => r.darsName || '', width: 30, defaultVisible: true },
+      { id: 'darsMudarris', header: 'Sadar Mudarris', accessor: (r) => r.darsMudarris || '', width: 22, defaultVisible: true },
+      { id: 'darsDistrict', header: 'District', accessor: (r) => r.darsDistrict || '', width: 16, defaultVisible: true },
+      { id: 'category', header: 'Category', accessor: (r) => r.category || 'regular', width: 14, defaultVisible: true },
+      { id: 'status', header: 'Verification Status', accessor: (r) => r.status, width: 14, defaultVisible: true },
+      { id: 'gateStatus', header: 'Gate Status', accessor: (r) => r.gateStatus || 'outside', width: 12, defaultVisible: true },
+      { id: 'lastCheckpoint', header: 'Last Checkpoint', accessor: (r) => r.lastCheckpoint || '—', width: 14, defaultVisible: false },
+      { id: 'isArchived', header: 'Archived', accessor: (r) => (r.isArchived ? 'Yes' : 'No'), width: 10, defaultVisible: false },
+      { id: 'submittedAt', header: 'Submission Date', accessor: (r) => new Date(r.submittedAt).toLocaleString('en-IN'), width: 22, defaultVisible: true },
+      { id: 'source', header: 'Channel', accessor: (r) => r.source || 'online', width: 12, defaultVisible: false },
+      { id: 'adminNotes', header: 'Admin Notes', accessor: (r) => r.adminNotes || '', width: 28, defaultVisible: false, isPii: true },
+    ],
+    []
+  );
+
+  const registrationPresets: ExportPreset<Registration>[] = useMemo(
+    () => [
+      {
+        id: 'full_archive',
+        title: 'Full Database Dump',
+        description: 'Complete records with all columns in Excel workbook',
+        format: 'xlsx',
+        visibleColumnIds: [
+          'id', 'fullName', 'phone', 'email', 'darsRegNo', 'darsName', 'darsMudarris',
+          'darsDistrict', 'category', 'status', 'gateStatus', 'lastCheckpoint', 'submittedAt', 'source', 'adminNotes'
+        ],
+      },
+      {
+        id: 'gate_manifest',
+        title: 'Gate Security Manifest',
+        description: 'Check-in list with Ref ID, Name, Dars, and Gate Status',
+        format: 'csv',
+        visibleColumnIds: ['id', 'fullName', 'phone', 'darsRegNo', 'darsName', 'category', 'status', 'gateStatus'],
+      },
+      {
+        id: 'whatsapp_broadcast',
+        title: 'WhatsApp Broadcast List',
+        description: 'Clean phone numbers for organizer message alerts',
+        format: 'csv',
+        visibleColumnIds: ['id', 'fullName', 'phone', 'darsName', 'status'],
+      },
+      {
+        id: 'volunteer_roster',
+        title: 'Public / Volunteer Roster (PII Masked)',
+        description: 'Anonymizes phone numbers and private notes for team distribution',
+        format: 'xlsx',
+        maskPii: true,
+        visibleColumnIds: ['id', 'fullName', 'phone', 'darsName', 'darsDistrict', 'category', 'status', 'submittedAt'],
+      },
+    ],
+    []
+  );
+
+  const getExportConfig = (
+    targetData: Registration[],
+    customTitle?: string,
+    initialSelectedIds?: string[]
+  ): UniversalExportConfig<Registration> => ({
+    title: customTitle || `UFUQ ’26 Registrations (${activeTab.toUpperCase()})`,
+    filenamePrefix: `UFUQ26_Registrations_${activeTab}`,
+    data: targetData,
+    selectedIds: initialSelectedIds || selectedIds,
+    idAccessor: (r) => r.id,
+    columns: registrationColumns,
+    presets: registrationPresets,
+    defaultFormat: 'csv',
+  });
+
   const handleBulkExportCSV = () => {
     const subset = registrations.filter((r) => selectedIds.includes(r.id));
-    exportRegistrationsCSV(
-      subset,
-      `UFUQ26_Selected_${selectedIds.length}_Registrations.csv`
+    openExport(
+      getExportConfig(
+        subset,
+        `UFUQ ’26 Selected ${selectedIds.length} Registrations`,
+        selectedIds
+      )
     );
   };
 
   const handleExportFilteredCSV = () => {
-    exportRegistrationsCSV(
-      sortedRegistrations,
-      `UFUQ26_Registrations_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`
-    );
+    openExport(getExportConfig(sortedRegistrations));
+  };
+
+  const handleQuickExport = async (format: ExportFormat) => {
+    const config = getExportConfig(sortedRegistrations);
+    await executeExport(config, {
+      format,
+      scope: 'filtered',
+      visibleColumnIds: registrationColumns.filter((c) => c.defaultVisible !== false).map((c) => c.id),
+      maskPii: false,
+    });
   };
 
   const handleCopyPhoneNumbers = () => {
@@ -442,6 +547,7 @@ export default function RegistrationsManager({
         onSyncCloud={handleSyncCloud}
         isSyncing={isSyncing}
         onExportCSV={handleExportFilteredCSV}
+        onQuickExport={handleQuickExport}
         totalFilteredCount={sortedRegistrations.length}
       />
 
@@ -484,6 +590,7 @@ export default function RegistrationsManager({
         onBulkExport={handleBulkExportCSV}
         onCopyPhoneNumbers={handleCopyPhoneNumbers}
         onBulkPrintBadges={() => setIsBatchPrintModalOpen(true)}
+        onBulkSendNotice={() => setIsBatchNoticeModalOpen(true)}
         isArchivedView={activeTab === 'archived'}
       />
 
@@ -570,6 +677,23 @@ export default function RegistrationsManager({
         isOpen={isBatchPrintModalOpen}
         onClose={() => setIsBatchPrintModalOpen(false)}
         registrations={registrations.filter((r) => selectedIds.includes(r.id))}
+      />
+
+      {/* 12. Batch Omnichannel Notice Modal */}
+      <BatchNoticeModal
+        isOpen={isBatchNoticeModalOpen}
+        onClose={() => setIsBatchNoticeModalOpen(false)}
+        onSuccess={() => setSelectedIds([])}
+        selectedRegistrations={registrations.filter((r) => selectedIds.includes(r.id))}
+      />
+
+      {/* 13. Universal Export Suite Modal */}
+      <UniversalExportModal
+        isOpen={isExportModalOpen}
+        onClose={closeExport}
+        config={exportModalConfig}
+        onExecute={runExport}
+        isExporting={isExporting}
       />
     </div>
   );

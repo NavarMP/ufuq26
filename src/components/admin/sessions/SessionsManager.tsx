@@ -12,6 +12,16 @@ import {
   Trash2,
 } from 'lucide-react';
 import { ScheduleSession } from '@/types';
+import { useExport } from '@/hooks/useExport';
+import UniversalExportModal from '@/components/export/UniversalExportModal';
+import ExportTriggerButton from '@/components/export/ExportTriggerButton';
+import {
+  ExportColumn,
+  ExportPreset,
+  UniversalExportConfig,
+  ExportFormat,
+  executeExport,
+} from '@/lib/export';
 import SessionFormModal from './SessionFormModal';
 import ConfirmDialog from '../shared/ConfirmDialog';
 import StatusBadge from '../shared/StatusBadge';
@@ -65,6 +75,91 @@ export default function SessionsManager({
       });
   }, [schedule, selectedDay, searchQuery]);
 
+  const {
+    isOpen: isExportModalOpen,
+    activeConfig: exportModalConfig,
+    isExporting,
+    openExport,
+    closeExport,
+    runExport,
+  } = useExport<ScheduleSession>();
+
+  const sessionExportColumns: ExportColumn<ScheduleSession>[] = useMemo(
+    () => [
+      { id: 'day', header: 'Camp Day', accessor: (s) => `Day ${s.day}`, width: 10, defaultVisible: true },
+      { id: 'date', header: 'Date', accessor: (s) => s.date, width: 12, defaultVisible: true },
+      { id: 'startTime', header: 'Start Time', accessor: (s) => s.startTime, width: 10, defaultVisible: true },
+      { id: 'endTime', header: 'End Time', accessor: (s) => s.endTime, width: 10, defaultVisible: true },
+      { id: 'titleEn', header: 'Title (English)', accessor: (s) => s.title.en, width: 30, defaultVisible: true },
+      { id: 'titleMl', header: 'Title (Malayalam)', accessor: (s) => s.title.ml || '', width: 30, defaultVisible: true },
+      { id: 'category', header: 'Category / Track', accessor: (s) => s.category || 'General', width: 16, defaultVisible: true },
+      { id: 'speaker', header: 'Speaker / Faculty', accessor: (s) => s.speaker || '—', width: 22, defaultVisible: true },
+      { id: 'location', header: 'Room / Venue', accessor: (s) => s.location || 'Main Auditorium', width: 20, defaultVisible: true },
+      { id: 'description', header: 'Session Summary', accessor: (s) => s.description?.en || '', width: 35, defaultVisible: false },
+      { id: 'published', header: 'Published', accessor: (s) => (s.published ? 'Yes' : 'Draft'), width: 10, defaultVisible: false },
+    ],
+    []
+  );
+
+  const sessionPresets: ExportPreset<ScheduleSession>[] = useMemo(
+    () => [
+      {
+        id: 'curriculum_master',
+        title: 'Master Curriculum Schedule',
+        description: 'Complete 7-day academic plan with all tracks and speakers in Excel',
+        format: 'xlsx',
+        visibleColumnIds: [
+          'day', 'date', 'startTime', 'endTime', 'titleEn', 'titleMl', 'category', 'speaker', 'location', 'description', 'published'
+        ],
+      },
+      {
+        id: 'daily_roster',
+        title: 'Daily Timetable Roster',
+        description: 'Chronological time, speaker, and hall assignment sheet',
+        format: 'csv',
+        visibleColumnIds: ['day', 'startTime', 'endTime', 'titleEn', 'speaker', 'location', 'category'],
+      },
+      {
+        id: 'calendar_sync',
+        title: 'Universal Calendar (.ics)',
+        description: 'RFC 5545 calendar package ready to sync to Google or Apple Calendar',
+        format: 'ics',
+        visibleColumnIds: ['day', 'date', 'startTime', 'endTime', 'titleEn', 'category', 'location'],
+      },
+    ],
+    []
+  );
+
+  const handleOpenExportModal = () => {
+    openExport({
+      title: selectedDay === 'all' ? "UFUQ ’26 Full 7-Day Curriculum" : `UFUQ ’26 Day ${selectedDay} Schedule`,
+      filenamePrefix: `UFUQ26_Schedule_${selectedDay === 'all' ? 'Full' : `Day_${selectedDay}`}`,
+      data: filteredSchedule,
+      columns: sessionExportColumns,
+      presets: sessionPresets,
+      defaultFormat: 'xlsx',
+    });
+  };
+
+  const handleQuickExport = async (format: ExportFormat) => {
+    await executeExport(
+      {
+        title: selectedDay === 'all' ? "UFUQ ’26 Full 7-Day Curriculum" : `UFUQ ’26 Day ${selectedDay} Schedule`,
+        filenamePrefix: `UFUQ26_Schedule_${selectedDay === 'all' ? 'Full' : `Day_${selectedDay}`}`,
+        data: filteredSchedule,
+        columns: sessionExportColumns,
+        presets: sessionPresets,
+        defaultFormat: 'xlsx',
+      },
+      {
+        format,
+        scope: 'filtered',
+        visibleColumnIds: sessionExportColumns.filter((c) => c.defaultVisible !== false).map((c) => c.id),
+        maskPii: false,
+      }
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top Controls & Day Selector */}
@@ -102,18 +197,27 @@ export default function SessionsManager({
           })}
         </div>
 
-        {/* Add Session Button */}
-        <button
-          type="button"
-          onClick={() => {
-            setEditingSession(null);
-            setModalOpen(true);
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-gold text-brand-navy font-bold text-xs shadow hover:bg-brand-gold-hover transition-colors shrink-0 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Session</span>
-        </button>
+        {/* Actions: Export & Add Session */}
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+          <ExportTriggerButton
+            label="Export Curriculum"
+            count={filteredSchedule.length}
+            onOpenModal={handleOpenExportModal}
+            onQuickExport={handleQuickExport}
+          />
+
+          <button
+            type="button"
+            onClick={() => {
+              setEditingSession(null);
+              setModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-gold text-brand-navy font-bold text-xs shadow hover:bg-brand-gold-hover transition-colors shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Session</span>
+          </button>
+        </div>
       </div>
 
       {/* Search Input Bar */}
@@ -267,6 +371,15 @@ export default function SessionsManager({
         description={confirmDialog.description}
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Universal Export Suite Modal */}
+      <UniversalExportModal
+        isOpen={isExportModalOpen}
+        onClose={closeExport}
+        config={exportModalConfig}
+        onExecute={runExport}
+        isExporting={isExporting}
       />
     </div>
   );

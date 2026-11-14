@@ -1,33 +1,74 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { animate } from 'animejs';
 import { usePreferences } from '@/context/PreferencesContext';
 
 export default function CustomCursor() {
   const { preferences } = usePreferences();
-  const [position, setPosition] = useState({ x: -100, y: -100 });
-  const [trailing, setTrailing] = useState({ x: -100, y: -100 });
   const [cursorType, setCursorType] = useState<'default' | 'pointer' | 'drag'>('default');
   const [isClicking, setIsClicking] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [isFinePointer, setIsFinePointer] = useState(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const dotRef = useRef<HTMLDivElement>(null);
+  const ringRef = useRef<HTMLDivElement>(null);
+  const mousePos = useRef({ x: -100, y: -100 });
+  const currentPos = useRef({ x: -100, y: -100 });
+  const isInitialMove = useRef(true);
 
+  // Detect fine pointer (mouse / trackpad) vs touch device
   useEffect(() => {
-    // Check if device has fine pointer (desktop mouse/trackpad)
     const mediaQuery = window.matchMedia('(pointer: fine)');
     setIsFinePointer(mediaQuery.matches);
 
+    const onMediaChange = (e: MediaQueryListEvent) => {
+      setIsFinePointer(e.matches);
+    };
+
+    try {
+      mediaQuery.addEventListener('change', onMediaChange);
+    } catch {
+      mediaQuery.addListener(onMediaChange);
+    }
+
+    return () => {
+      try {
+        mediaQuery.removeEventListener('change', onMediaChange);
+      } catch {
+        mediaQuery.removeListener(onMediaChange);
+      }
+    };
+  }, []);
+
+  // Main cursor animation & event handling
+  useEffect(() => {
+    if (!isFinePointer || !preferences.customCursor || preferences.motionMode === 'reduced') {
+      return;
+    }
+
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!mediaQuery.matches || prefersReducedMotion) return;
+    if (prefersReducedMotion) return;
+
+    let rafId: number;
 
     const onMouseMove = (e: MouseEvent) => {
-      setPosition({ x: e.clientX, y: e.clientY });
-      if (!isVisible) setIsVisible(true);
+      const { clientX, clientY } = e;
 
-      // Check contextual target
+      // On first movement, snap follower directly so it doesn't fly across screen
+      if (isInitialMove.current) {
+        currentPos.current = { x: clientX, y: clientY };
+        isInitialMove.current = false;
+      }
+
+      mousePos.current = { x: clientX, y: clientY };
+      setIsVisible(true);
+
+      // Instantly position precision center dot with zero latency
+      if (dotRef.current) {
+        dotRef.current.style.transform = `translate3d(${clientX}px, ${clientY}px, 0) translate(-50%, -50%)`;
+      }
+
+      // Check contextual target under cursor
       const target = e.target as HTMLElement | null;
       if (target) {
         const isDrag = target.closest('[data-cursor="drag"], .cursor-grab, .cursor-grabbing');
@@ -42,7 +83,7 @@ export default function CustomCursor() {
       }
     };
 
-    // Spawn tactile click ripple shockwave via Anime.js
+    // Tactile click ripple shockwave
     const onMouseDown = (e: MouseEvent) => {
       setIsClicking(true);
 
@@ -54,17 +95,22 @@ export default function CustomCursor() {
       ripple.style.height = '12px';
       document.body.appendChild(ripple);
 
-      animate(ripple, {
-        scale: [1, 5.5],
-        opacity: [0.9, 0],
-        duration: 550,
-        ease: 'outQuad',
-        onComplete: () => {
-          if (ripple.parentNode) {
-            ripple.parentNode.removeChild(ripple);
+      try {
+        const anim = ripple.animate(
+          [
+            { transform: 'translate(-50%, -50%) scale(1)', opacity: '0.85' },
+            { transform: 'translate(-50%, -50%) scale(5.5)', opacity: '0' },
+          ],
+          {
+            duration: 500,
+            easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+            fill: 'forwards',
           }
-        },
-      });
+        );
+        anim.onfinish = () => ripple.remove();
+      } catch {
+        setTimeout(() => ripple.remove(), 550);
+      }
     };
 
     const onMouseUp = () => setIsClicking(false);
@@ -77,19 +123,19 @@ export default function CustomCursor() {
     document.addEventListener('mouseleave', onMouseLeave);
     document.addEventListener('mouseenter', onMouseEnter);
 
-    // Trailing loop for fluid spring inertia
-    let animationFrameId: number;
-    let currentX = -100;
-    let currentY = -100;
-
+    // Smooth inertia trailing loop for fluid follower ring
     const animateTrailing = () => {
-      currentX += (position.x - currentX) * 0.22;
-      currentY += (position.y - currentY) * 0.22;
-      setTrailing({ x: currentX, y: currentY });
-      animationFrameId = requestAnimationFrame(animateTrailing);
+      currentPos.current.x += (mousePos.current.x - currentPos.current.x) * 0.2;
+      currentPos.current.y += (mousePos.current.y - currentPos.current.y) * 0.2;
+
+      if (ringRef.current) {
+        ringRef.current.style.transform = `translate3d(${currentPos.current.x}px, ${currentPos.current.y}px, 0) translate(-50%, -50%)`;
+      }
+
+      rafId = requestAnimationFrame(animateTrailing);
     };
 
-    animationFrameId = requestAnimationFrame(animateTrailing);
+    rafId = requestAnimationFrame(animateTrailing);
 
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
@@ -97,33 +143,35 @@ export default function CustomCursor() {
       window.removeEventListener('mouseup', onMouseUp);
       document.removeEventListener('mouseleave', onMouseLeave);
       document.removeEventListener('mouseenter', onMouseEnter);
-      cancelAnimationFrame(animationFrameId);
+      cancelAnimationFrame(rafId);
     };
-  }, [position.x, position.y, isVisible]);
+  }, [isFinePointer, preferences.customCursor, preferences.motionMode]);
 
-  if (!isFinePointer || !isVisible || !preferences.customCursor || preferences.motionMode === 'reduced') {
+  if (!isFinePointer || !preferences.customCursor || preferences.motionMode === 'reduced') {
     return null;
   }
 
   return (
     <div
-      ref={containerRef}
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-[9999] overflow-hidden"
+      className={`pointer-events-none fixed inset-0 z-[9999] overflow-hidden transition-opacity duration-300 ${
+        isVisible ? 'opacity-100' : 'opacity-0'
+      }`}
     >
       {/* Outer Spring Follower Ring / Aura */}
       <div
-        className={`fixed top-0 left-0 rounded-full transition-all duration-150 ease-out flex items-center justify-center ${
+        ref={ringRef}
+        className={`fixed top-0 left-0 rounded-full flex items-center justify-center pointer-events-none transition-[width,height,background-color,border-color,box-shadow,opacity] duration-200 ease-out ${
           cursorType === 'drag'
-            ? 'h-10 w-10 -translate-x-5 -translate-y-5 bg-brand-gold/20 border border-brand-gold shadow-[0_0_12px_rgba(201,164,92,0.4)]'
+            ? 'h-10 w-10 bg-brand-gold/20 border border-brand-gold shadow-[0_0_12px_rgba(201,164,92,0.4)]'
             : cursorType === 'pointer'
-            ? 'h-11 w-11 -translate-x-[22px] -translate-y-[22px] bg-brand-gold/15 border border-brand-gold/80 shadow-[0_0_15px_rgba(201,164,92,0.3)]'
+            ? 'h-11 w-11 bg-brand-gold/15 border border-brand-gold/80 shadow-[0_0_15px_rgba(201,164,92,0.3)]'
             : isClicking
-            ? 'h-5 w-5 -translate-x-2.5 -translate-y-2.5 bg-brand-gold/30 border border-brand-gold'
-            : 'h-8 w-8 -translate-x-4 -translate-y-4 border border-brand-gold/60'
+            ? 'h-6 w-6 bg-brand-gold/30 border border-brand-gold shadow-[0_0_8px_rgba(201,164,92,0.5)]'
+            : 'h-8 w-8 bg-transparent border border-brand-gold/60'
         }`}
         style={{
-          transform: `translate3d(${trailing.x}px, ${trailing.y}px, 0)`,
+          transform: 'translate3d(-100px, -100px, 0) translate(-50%, -50%)',
           willChange: 'transform',
         }}
       >
@@ -136,17 +184,18 @@ export default function CustomCursor() {
 
       {/* Center Precision Pointer Dot */}
       <div
-        className={`fixed top-0 left-0 rounded-full bg-brand-gold shadow-[0_0_6px_rgba(201,164,92,0.8)] transition-all duration-100 ${
+        ref={dotRef}
+        className={`fixed top-0 left-0 rounded-full bg-brand-gold shadow-[0_0_6px_rgba(201,164,92,0.8)] pointer-events-none transition-[width,height,opacity] duration-150 ease-out ${
           cursorType === 'pointer'
-            ? 'h-1 w-1 -translate-x-[2px] -translate-y-[2px] opacity-40 scale-75'
+            ? 'h-1 w-1 opacity-50'
             : cursorType === 'drag'
             ? 'opacity-0'
             : isClicking
-            ? 'h-2 w-2 -translate-x-1 -translate-y-1 scale-125'
-            : 'h-1.5 w-1.5 -translate-x-[3px] -translate-y-[3px] opacity-100'
+            ? 'h-2.5 w-2.5 opacity-90'
+            : 'h-1.5 w-1.5 opacity-100'
         }`}
         style={{
-          transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+          transform: 'translate3d(-100px, -100px, 0) translate(-50%, -50%)',
           willChange: 'transform',
         }}
       />

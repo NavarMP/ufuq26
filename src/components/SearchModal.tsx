@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useEvent } from '@/context/EventContext';
 import { useApp } from '@/context/AppContext';
 import { resolveLocalized } from '@/lib/translations';
-import { Search, X, Calendar, User, HelpCircle, ArrowRight, BookOpen } from 'lucide-react';
+import { Search, X, Calendar, User, HelpCircle, ArrowRight, BookOpen, Image as ImageIcon } from 'lucide-react';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -12,7 +12,7 @@ interface SearchModalProps {
 }
 
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
-  const { schedule, guests, faqs } = useEvent();
+  const { schedule, guests, faqs, galleryItems } = useEvent();
   const { language, t, isRtl } = useApp();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -137,6 +137,13 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       url: '/about#digital-craft',
       category: 'Digital Innovation',
     },
+    {
+      id: 'topic-gallery',
+      title: 'Horizon Gallery & Visual Sanctuary',
+      desc: 'Curated visual archive of Camp UFUQ ’26, Alathurpadi Dars, respected Ustads, SUFFA network, and Suhbah moments.',
+      url: '/gallery',
+      category: 'Visual Sanctuary',
+    },
   ];
 
   const matchingTopics = q
@@ -149,7 +156,17 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
       })
     : [];
 
-  const totalResults = matchingSessions.length + matchingGuests.length + matchingFAQs.length + matchingTopics.length;
+  const matchingGallery = q
+    ? galleryItems.filter((g) => {
+        if (!g.published) return false;
+        const title = resolveLocalized(g.title, language).toLowerCase();
+        const caption = resolveLocalized(g.caption, language).toLowerCase();
+        const tagMatch = g.tags.some((t) => t.toLowerCase().includes(q));
+        return title.includes(q) || caption.includes(q) || tagMatch;
+      })
+    : [];
+
+  const totalResults = matchingSessions.length + matchingGuests.length + matchingFAQs.length + matchingTopics.length + matchingGallery.length;
 
   const handleSelect = (target: string) => {
     onClose();
@@ -346,6 +363,40 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
                       <div className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 mt-0.5">
                         {resolveLocalized(faq.answer, language)}
                       </div>
+                    </div>
+                    <ArrowRight className={`w-4 h-4 text-neutral-400 group-hover:text-brand-gold shrink-0 transition-transform ${isRtl ? 'rotate-180' : ''}`} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Gallery Artifacts */}
+          {matchingGallery.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 text-xs font-semibold text-brand-gold uppercase tracking-wider mb-2 px-2">
+                <ImageIcon className="w-3.5 h-3.5" />
+                Gallery Artifacts ({matchingGallery.length})
+              </div>
+              <div className="space-y-1.5">
+                {matchingGallery.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleSelect(`/gallery?item=${item.id}`)}
+                    className="w-full text-left rtl:text-right p-3 rounded-xl hover:bg-brand-gold/10 dark:hover:bg-brand-gold/15 transition-colors flex items-center justify-between group"
+                  >
+                    <div>
+                      <div className="text-[10px] font-mono text-brand-gold uppercase tracking-wider font-semibold">
+                        {item.category.replace('_', ' ')}
+                      </div>
+                      <div className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 group-hover:text-brand-gold">
+                        {resolveLocalized(item.title, language)}
+                      </div>
+                      {item.caption && (
+                        <div className="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1 mt-0.5">
+                          {resolveLocalized(item.caption, language)}
+                        </div>
+                      )}
                     </div>
                     <ArrowRight className={`w-4 h-4 text-neutral-400 group-hover:text-brand-gold shrink-0 transition-transform ${isRtl ? 'rotate-180' : ''}`} />
                   </button>

@@ -1,14 +1,18 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { EventInfo, ScheduleSession, Guest, FAQ, Registration, RegistrationField, AudioTrack, SuffaDars, DarsAccount } from '@/types';
+import { EventInfo, ScheduleSession, Guest, FAQ, Registration, RegistrationField, AudioTrack, SuffaDars, DarsAccount, GalleryItem } from '@/types';
 import { initialEventInfo, initialScheduleSessions, initialGuests, initialFAQs, defaultRegistrationFields, initialAudioTracks } from '@/lib/initialData';
 import { initialDarsList } from '@/lib/darsData';
 import { initialDarsAccounts } from '@/lib/initialDarsAccounts';
+import { initialGalleryItems } from '@/lib/initialGalleryData';
 import { normalizePhone, formatDisplayPhone, generateDarsPassword } from '@/lib/authHelpers';
 import { ensureRegistrationCode, generateRegistrationCode } from '@/lib/regCodeGenerator';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
+import { executeFirestoreBatch } from '@/lib/batch/firestoreBatchService';
+import { batchAuditManager } from '@/lib/batch/batchAuditStore';
+import { dispatchNotification } from '@/lib/notifications/notificationDispatcher';
 
 interface EventContextType {
   eventInfo: EventInfo;
@@ -31,16 +35,23 @@ interface EventContextType {
   addSession: (session: Omit<ScheduleSession, 'id'>) => Promise<void>;
   updateSession: (id: string, session: Partial<ScheduleSession>) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
+  bulkUpdateSessions: (ids: string[], updates: Partial<ScheduleSession>) => Promise<void>;
+  bulkDeleteSessions: (ids: string[]) => Promise<void>;
+  bulkTimeShiftSessions: (ids: string[], shiftMinutes: number) => Promise<void>;
   
   // Guests CRUD
   addGuest: (guest: Omit<Guest, 'id'>) => Promise<void>;
   updateGuest: (id: string, guest: Partial<Guest>) => Promise<void>;
   deleteGuest: (id: string) => Promise<void>;
+  bulkUpdateGuests: (ids: string[], updates: Partial<Guest>) => Promise<void>;
+  bulkDeleteGuests: (ids: string[]) => Promise<void>;
   
   // FAQs CRUD
   addFAQ: (faq: Omit<FAQ, 'id'>) => Promise<void>;
   updateFAQ: (id: string, faq: Partial<FAQ>) => Promise<void>;
   deleteFAQ: (id: string) => Promise<void>;
+  bulkUpdateFAQs: (ids: string[], updates: Partial<FAQ>) => Promise<void>;
+  bulkDeleteFAQs: (ids: string[]) => Promise<void>;
 
   // Audio Tracks CRUD
   audioTracks: AudioTrack[];
@@ -54,6 +65,8 @@ interface EventContextType {
   addDars: (dars: Omit<SuffaDars, 'id'> & { id?: string }) => Promise<void>;
   updateDars: (id: string, updates: Partial<SuffaDars>) => Promise<void>;
   deleteDars: (id: string) => Promise<void>;
+  bulkUpdateDars: (ids: string[], updates: Partial<SuffaDars>) => Promise<void>;
+  bulkDeleteDars: (ids: string[]) => Promise<void>;
   resetDarsToDefault: () => Promise<void>;
 
   // Dars Logins & Accounts CRUD (Admin)
@@ -61,6 +74,9 @@ interface EventContextType {
   addDarsAccount: (account: DarsAccount) => Promise<void>;
   updateDarsAccount: (id: string, updates: Partial<DarsAccount>) => Promise<void>;
   deleteDarsAccount: (id: string) => Promise<void>;
+  bulkUpdateDarsAccounts: (ids: string[], updates: Partial<DarsAccount>) => Promise<void>;
+  bulkDeleteDarsAccounts: (ids: string[]) => Promise<void>;
+  bulkResetDarsPasswords: (ids: string[]) => Promise<void>;
   seedDarsAccounts: () => Promise<{ count: number; seeded: DarsAccount[] }>;
   exportDarsCredentialsCSV: () => void;
 
@@ -77,6 +93,7 @@ interface EventContextType {
   archiveRegistration: (id: string, reason?: string) => Promise<void>;
   unarchiveRegistration: (id: string) => Promise<void>;
   deleteRegistration: (id: string) => Promise<void>;
+  bulkUpdateRegistrations: (ids: string[], updates: Partial<Registration>) => Promise<void>;
   bulkUpdateRegistrationStatus: (ids: string[], status: 'pending' | 'confirmed' | 'cancelled') => Promise<void>;
   bulkArchiveRegistrations: (ids: string[]) => Promise<void>;
   bulkUnarchiveRegistrations: (ids: string[]) => Promise<void>;
@@ -85,6 +102,15 @@ interface EventContextType {
 
   // Reset to initial
   resetToDefaultData: () => void;
+
+  // Gallery Showcase CRUD
+  galleryItems: GalleryItem[];
+  addGalleryItem: (item: Omit<GalleryItem, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateGalleryItem: (id: string, updates: Partial<GalleryItem>) => Promise<void>;
+  deleteGalleryItem: (id: string) => Promise<void>;
+  bulkUpdateGalleryItems: (ids: string[], updates: Partial<GalleryItem>) => Promise<void>;
+  bulkDeleteGalleryItems: (ids: string[]) => Promise<void>;
+  reorderGalleryItems: (items: GalleryItem[]) => Promise<void>;
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
@@ -99,6 +125,7 @@ const STORAGE_KEYS = {
   AUDIO_TRACKS: 'ufuq_audio_tracks_v1',
   DARS: 'ufuq_dars_v1',
   DARS_ACCOUNTS: 'ufuq_dars_accounts_v1',
+  GALLERY: 'ufuq_gallery_v1',
 };
 
 export function EventProvider({ children }: { children: React.ReactNode }) {
@@ -111,6 +138,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   const [darsAccounts, setDarsAccounts] = useState<DarsAccount[]>(initialDarsAccounts);
   const [registrationFields, setRegistrationFields] = useState<RegistrationField[]>(defaultRegistrationFields);
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>(initialAudioTracks);
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(initialGalleryItems);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -146,6 +174,9 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
 
       const storedAudio = localStorage.getItem(STORAGE_KEYS.AUDIO_TRACKS);
       if (storedAudio) setAudioTracks(JSON.parse(storedAudio));
+
+      const storedGallery = localStorage.getItem(STORAGE_KEYS.GALLERY);
+      if (storedGallery) setGalleryItems(JSON.parse(storedGallery));
 
       const storedDars = localStorage.getItem(STORAGE_KEYS.DARS);
       if (storedDars) {
@@ -234,6 +265,17 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
           setDarsAccounts(remoteAccounts);
           persist(STORAGE_KEYS.DARS_ACCOUNTS, remoteAccounts);
         }
+
+        const gallerySnap = await getDocs(collection(db, 'gallery'));
+        if (!gallerySnap.empty) {
+          const remoteGallery: GalleryItem[] = [];
+          gallerySnap.forEach((docSnap) => {
+            remoteGallery.push({ id: docSnap.id, ...(docSnap.data() as any) });
+          });
+          remoteGallery.sort((a, b) => (a.order || 0) - (b.order || 0));
+          setGalleryItems(remoteGallery);
+          persist(STORAGE_KEYS.GALLERY, remoteGallery);
+        }
       } catch (e) {
         // Firestore rules or offline: keep using local cache seamlessly
       }
@@ -316,6 +358,33 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
       } catch (err) {
         // Firestore will sync when online or rules are applied
         console.warn('Firestore write queued or local-only', err);
+      }
+
+      // 3. Dispatch Automatic Omnichannel Registration Notification
+      try {
+        const passUrl = typeof window !== 'undefined' ? `${window.location.origin}/#pass` : 'https://alathurpadidars.in/#pass';
+        dispatchNotification({
+          recipientId: newId,
+          recipientName: newRegistration.fullName,
+          recipientPhone: newRegistration.phone,
+          recipientEmail: newRegistration.email,
+          channels: newRegistration.email ? ['email', 'web_push', 'in_app'] : ['web_push', 'in_app'],
+          eventType: 'registration_submitted',
+          vars: {
+            fullName: newRegistration.fullName,
+            phone: newRegistration.phone,
+            email: newRegistration.email,
+            regCode: newRegistration.regCode,
+            id: newId,
+            darsName: newRegistration.darsName,
+            darsRegNo: newRegistration.darsRegNo,
+            darsMudarris: newRegistration.darsMudarris,
+            status: 'pending',
+            passUrl,
+          },
+        }).catch((e) => console.warn('Registration notification dispatch failed silently:', e));
+      } catch (notifErr) {
+        console.warn('Notification trigger caught:', notifErr);
       }
 
       return { success: true, id: newId };
@@ -445,6 +514,124 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {}
   };
 
+  const bulkUpdateSessions = async (ids: string[], updates: Partial<ScheduleSession>) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const prevSnapshots = schedule
+      .filter((s) => idSet.has(s.id))
+      .map((s) => ({ id: s.id, prevData: { ...s } }));
+
+    const updated = schedule.map((s) => (idSet.has(s.id) ? { ...s, ...updates } : s));
+    setSchedule(updated);
+    persist(STORAGE_KEYS.SCHEDULE, updated);
+
+    await executeFirestoreBatch(
+      ids.map((id) => ({ id, collectionName: 'schedule', type: 'update' as const, data: updates }))
+    );
+
+    batchAuditManager.registerUndoableAction({
+      title: `Updated ${ids.length} timetable sessions`,
+      collectionName: 'schedule',
+      itemCount: ids.length,
+      snapshot: prevSnapshots,
+      onUndo: async () => {
+        const revertMap = new Map(prevSnapshots.map((item) => [item.id, item.prevData]));
+        const reverted = schedule.map((s) => (revertMap.has(s.id) ? { ...s, ...revertMap.get(s.id)! } : s));
+        setSchedule(reverted);
+        persist(STORAGE_KEYS.SCHEDULE, reverted);
+        await executeFirestoreBatch(
+          prevSnapshots.map((item) => ({ id: item.id, collectionName: 'schedule', type: 'update' as const, data: item.prevData }))
+        );
+      },
+    });
+  };
+
+  const bulkDeleteSessions = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const updated = schedule.filter((s) => !idSet.has(s.id));
+    setSchedule(updated);
+    persist(STORAGE_KEYS.SCHEDULE, updated);
+    await executeFirestoreBatch(
+      ids.map((id) => ({ id, collectionName: 'schedule', type: 'delete' as const }))
+    );
+  };
+
+  const bulkTimeShiftSessions = async (ids: string[], shiftMinutes: number) => {
+    if (ids.length === 0 || shiftMinutes === 0) return;
+    const idSet = new Set(ids);
+    const prevSnapshots = schedule
+      .filter((s) => idSet.has(s.id))
+      .map((s) => ({ id: s.id, prevData: { startTime: s.startTime, endTime: s.endTime } }));
+
+    const shiftTime = (timeStr: string, delta: number): string => {
+      if (!timeStr) return timeStr;
+      const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+      if (!match) return timeStr;
+      let hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      const ampm = match[3]?.toUpperCase();
+
+      if (ampm === 'PM' && hours < 12) hours += 12;
+      if (ampm === 'AM' && hours === 12) hours = 0;
+
+      let totalMinutes = hours * 60 + minutes + delta;
+      totalMinutes = ((totalMinutes % 1440) + 1440) % 1440;
+
+      const newHours24 = Math.floor(totalMinutes / 60);
+      const newMins = totalMinutes % 60;
+      const pad = (n: number) => n.toString().padStart(2, '0');
+
+      if (ampm) {
+        const finalAmpm = newHours24 >= 12 ? 'PM' : 'AM';
+        const hours12 = newHours24 % 12 || 12;
+        return `${pad(hours12)}:${pad(newMins)} ${finalAmpm}`;
+      } else {
+        return `${pad(newHours24)}:${pad(newMins)}`;
+      }
+    };
+
+    const updated = schedule.map((s) => {
+      if (!idSet.has(s.id)) return s;
+      return {
+        ...s,
+        startTime: shiftTime(s.startTime, shiftMinutes),
+        endTime: shiftTime(s.endTime, shiftMinutes),
+      };
+    });
+
+    setSchedule(updated);
+    persist(STORAGE_KEYS.SCHEDULE, updated);
+
+    const mutations = ids.map((id) => {
+      const item = updated.find((s) => s.id === id);
+      return {
+        id,
+        collectionName: 'schedule',
+        type: 'update' as const,
+        data: { startTime: item?.startTime, endTime: item?.endTime },
+      };
+    });
+
+    await executeFirestoreBatch(mutations);
+
+    batchAuditManager.registerUndoableAction({
+      title: `Time-shifted ${ids.length} sessions (${shiftMinutes > 0 ? '+' : ''}${shiftMinutes}m)`,
+      collectionName: 'schedule',
+      itemCount: ids.length,
+      snapshot: prevSnapshots,
+      onUndo: async () => {
+        const revertMap = new Map(prevSnapshots.map((item) => [item.id, item.prevData]));
+        const reverted = schedule.map((s) => (revertMap.has(s.id) ? { ...s, ...revertMap.get(s.id)! } : s));
+        setSchedule(reverted);
+        persist(STORAGE_KEYS.SCHEDULE, reverted);
+        await executeFirestoreBatch(
+          prevSnapshots.map((item) => ({ id: item.id, collectionName: 'schedule', type: 'update' as const, data: item.prevData }))
+        );
+      },
+    });
+  };
+
   // Admin: Guests
   const addGuest = async (guestData: Omit<Guest, 'id'>) => {
     const newId = `guest-${Date.now()}`;
@@ -478,6 +665,49 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {}
   };
 
+  const bulkUpdateGuests = async (ids: string[], updates: Partial<Guest>) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const prevSnapshots = guests
+      .filter((g) => idSet.has(g.id))
+      .map((g) => ({ id: g.id, prevData: { ...g } }));
+
+    const updated = guests.map((g) => (idSet.has(g.id) ? { ...g, ...updates } : g));
+    setGuests(updated);
+    persist(STORAGE_KEYS.GUESTS, updated);
+
+    await executeFirestoreBatch(
+      ids.map((id) => ({ id, collectionName: 'guests', type: 'update' as const, data: updates }))
+    );
+
+    batchAuditManager.registerUndoableAction({
+      title: `Updated ${ids.length} scholars & faculty`,
+      collectionName: 'guests',
+      itemCount: ids.length,
+      snapshot: prevSnapshots,
+      onUndo: async () => {
+        const revertMap = new Map(prevSnapshots.map((item) => [item.id, item.prevData]));
+        const reverted = guests.map((g) => (revertMap.has(g.id) ? { ...g, ...revertMap.get(g.id)! } : g));
+        setGuests(reverted);
+        persist(STORAGE_KEYS.GUESTS, reverted);
+        await executeFirestoreBatch(
+          prevSnapshots.map((item) => ({ id: item.id, collectionName: 'guests', type: 'update' as const, data: item.prevData }))
+        );
+      },
+    });
+  };
+
+  const bulkDeleteGuests = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const updated = guests.filter((g) => !idSet.has(g.id));
+    setGuests(updated);
+    persist(STORAGE_KEYS.GUESTS, updated);
+    await executeFirestoreBatch(
+      ids.map((id) => ({ id, collectionName: 'guests', type: 'delete' as const }))
+    );
+  };
+
   // Admin: FAQs
   const addFAQ = async (faqData: Omit<FAQ, 'id'>) => {
     const newId = `faq-${Date.now()}`;
@@ -509,6 +739,49 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     try {
       await deleteDoc(doc(db, 'faqs', id));
     } catch (e) {}
+  };
+
+  const bulkUpdateFAQs = async (ids: string[], updates: Partial<FAQ>) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const prevSnapshots = faqs
+      .filter((f) => idSet.has(f.id))
+      .map((f) => ({ id: f.id, prevData: { ...f } }));
+
+    const updated = faqs.map((f) => (idSet.has(f.id) ? { ...f, ...updates } : f));
+    setFaqs(updated);
+    persist(STORAGE_KEYS.FAQS, updated);
+
+    await executeFirestoreBatch(
+      ids.map((id) => ({ id, collectionName: 'faqs', type: 'update' as const, data: updates }))
+    );
+
+    batchAuditManager.registerUndoableAction({
+      title: `Updated ${ids.length} FAQs`,
+      collectionName: 'faqs',
+      itemCount: ids.length,
+      snapshot: prevSnapshots,
+      onUndo: async () => {
+        const revertMap = new Map(prevSnapshots.map((item) => [item.id, item.prevData]));
+        const reverted = faqs.map((f) => (revertMap.has(f.id) ? { ...f, ...revertMap.get(f.id)! } : f));
+        setFaqs(reverted);
+        persist(STORAGE_KEYS.FAQS, reverted);
+        await executeFirestoreBatch(
+          prevSnapshots.map((item) => ({ id: item.id, collectionName: 'faqs', type: 'update' as const, data: item.prevData }))
+        );
+      },
+    });
+  };
+
+  const bulkDeleteFAQs = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const updated = faqs.filter((f) => !idSet.has(f.id));
+    setFaqs(updated);
+    persist(STORAGE_KEYS.FAQS, updated);
+    await executeFirestoreBatch(
+      ids.map((id) => ({ id, collectionName: 'faqs', type: 'delete' as const }))
+    );
   };
 
   // Admin: Audio Tracks
@@ -556,6 +829,123 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {}
   };
 
+  // Admin: Gallery Showcase CRUD
+  const addGalleryItem = async (itemData: Omit<GalleryItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newId = `gal-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+    const now = new Date().toISOString();
+    const newItem: GalleryItem = {
+      ...itemData,
+      id: newId,
+      views: itemData.views ?? 0,
+      likes: itemData.likes ?? 0,
+      published: itemData.published ?? true,
+      featured: itemData.featured ?? false,
+      order: itemData.order ?? (galleryItems.length + 1),
+      createdAt: now,
+      updatedAt: now,
+    };
+    const updated = [...galleryItems, newItem].sort((a, b) => (a.order || 0) - (b.order || 0));
+    setGalleryItems(updated);
+    persist(STORAGE_KEYS.GALLERY, updated);
+    try {
+      await setDoc(doc(db, 'gallery', newId), newItem);
+    } catch (e) {
+      console.warn('Failed to sync gallery item to Firestore (offline fallback active):', e);
+    }
+  };
+
+  const updateGalleryItem = async (id: string, updates: Partial<GalleryItem>) => {
+    const now = new Date().toISOString();
+    const updated = galleryItems.map((g) =>
+      g.id === id ? { ...g, ...updates, updatedAt: now } : g
+    ).sort((a, b) => (a.order || 0) - (b.order || 0));
+    setGalleryItems(updated);
+    persist(STORAGE_KEYS.GALLERY, updated);
+    try {
+      await updateDoc(doc(db, 'gallery', id), { ...updates, updatedAt: now });
+    } catch (e) {
+      console.warn('Failed to update gallery item in Firestore:', e);
+    }
+  };
+
+  const deleteGalleryItem = async (id: string) => {
+    const updated = galleryItems.filter((g) => g.id !== id);
+    setGalleryItems(updated);
+    persist(STORAGE_KEYS.GALLERY, updated);
+    try {
+      await deleteDoc(doc(db, 'gallery', id));
+    } catch (e) {
+      console.warn('Failed to delete gallery item from Firestore:', e);
+    }
+  };
+
+  const bulkUpdateGalleryItems = async (ids: string[], updates: Partial<GalleryItem>) => {
+    if (ids.length === 0) return;
+    const now = new Date().toISOString();
+    const idSet = new Set(ids);
+    const prevSnapshots = galleryItems
+      .filter((g) => idSet.has(g.id))
+      .map((g) => ({ id: g.id, prevData: { ...g } }));
+
+    const updated = galleryItems.map((g) =>
+      idSet.has(g.id) ? { ...g, ...updates, updatedAt: now } : g
+    );
+    setGalleryItems(updated);
+    persist(STORAGE_KEYS.GALLERY, updated);
+
+    await executeFirestoreBatch(
+      ids.map((id) => ({
+        id,
+        collectionName: 'gallery',
+        type: 'update' as const,
+        data: { ...updates, updatedAt: now },
+      }))
+    );
+
+    batchAuditManager.registerUndoableAction({
+      title: `Updated ${ids.length} gallery assets`,
+      collectionName: 'gallery',
+      itemCount: ids.length,
+      snapshot: prevSnapshots,
+      onUndo: async () => {
+        const revertMap = new Map(prevSnapshots.map((item) => [item.id, item.prevData]));
+        const reverted = galleryItems.map((g) => (revertMap.has(g.id) ? { ...g, ...revertMap.get(g.id)! } : g));
+        setGalleryItems(reverted);
+        persist(STORAGE_KEYS.GALLERY, reverted);
+        await executeFirestoreBatch(
+          prevSnapshots.map((item) => ({ id: item.id, collectionName: 'gallery', type: 'update' as const, data: item.prevData }))
+        );
+      },
+    });
+  };
+
+  const bulkDeleteGalleryItems = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const updated = galleryItems.filter((g) => !idSet.has(g.id));
+    setGalleryItems(updated);
+    persist(STORAGE_KEYS.GALLERY, updated);
+    await executeFirestoreBatch(
+      ids.map((id) => ({ id, collectionName: 'gallery', type: 'delete' as const }))
+    );
+  };
+
+  const reorderGalleryItems = async (reordered: GalleryItem[]) => {
+    const now = new Date().toISOString();
+    const normalized = reordered.map((item, idx) => ({
+      ...item,
+      order: idx + 1,
+      updatedAt: now,
+    }));
+    setGalleryItems(normalized);
+    persist(STORAGE_KEYS.GALLERY, normalized);
+    try {
+      for (const item of normalized) {
+        await setDoc(doc(db, 'gallery', item.id), item);
+      }
+    } catch (e) {}
+  };
+
   // Admin: SUFFA Dars
   const addDars = async (darsData: Omit<SuffaDars, 'id'> & { id?: string }) => {
     const newId = darsData.id || `dars-${Date.now()}`;
@@ -589,6 +979,57 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     try {
       await deleteDoc(doc(db, 'dars', id));
     } catch (e) {}
+  };
+
+  const bulkUpdateDars = async (ids: string[], updates: Partial<SuffaDars>) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    const prevSnapshots = darsList
+      .filter((d) => idSet.has(d.id))
+      .map((d) => ({ id: d.id, prevData: { ...d } }));
+
+    const updated = darsList.map((d) =>
+      idSet.has(d.id) ? { ...d, ...updates, updatedAt: now } : d
+    );
+    setDarsList(updated);
+    persist(STORAGE_KEYS.DARS, updated);
+
+    await executeFirestoreBatch(
+      ids.map((id) => ({
+        id,
+        collectionName: 'dars',
+        type: 'update' as const,
+        data: { ...updates, updatedAt: now },
+      }))
+    );
+
+    batchAuditManager.registerUndoableAction({
+      title: `Updated ${ids.length} SUFFA institutions`,
+      collectionName: 'dars',
+      itemCount: ids.length,
+      snapshot: prevSnapshots,
+      onUndo: async () => {
+        const revertMap = new Map(prevSnapshots.map((item) => [item.id, item.prevData]));
+        const reverted = darsList.map((d) => (revertMap.has(d.id) ? { ...d, ...revertMap.get(d.id)! } : d));
+        setDarsList(reverted);
+        persist(STORAGE_KEYS.DARS, reverted);
+        await executeFirestoreBatch(
+          prevSnapshots.map((item) => ({ id: item.id, collectionName: 'dars', type: 'update' as const, data: item.prevData }))
+        );
+      },
+    });
+  };
+
+  const bulkDeleteDars = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const updated = darsList.filter((d) => !idSet.has(d.id));
+    setDarsList(updated);
+    persist(STORAGE_KEYS.DARS, updated);
+    await executeFirestoreBatch(
+      ids.map((id) => ({ id, collectionName: 'dars', type: 'delete' as const }))
+    );
   };
 
   const resetDarsToDefault = async () => {
@@ -652,6 +1093,105 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.warn('Firestore deleteDarsAccount notice', e);
     }
+  };
+
+  const bulkUpdateDarsAccounts = async (ids: string[], updates: Partial<DarsAccount>) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    const prevSnapshots = darsAccounts
+      .filter((a) => idSet.has(a.id) || idSet.has(a.regNo))
+      .map((a) => ({ id: a.id, prevData: { ...a } }));
+
+    const updated = darsAccounts.map((a) =>
+      idSet.has(a.id) || idSet.has(a.regNo) ? { ...a, ...updates, updatedAt: now } : a
+    );
+    setDarsAccounts(updated);
+    persist(STORAGE_KEYS.DARS_ACCOUNTS, updated);
+
+    await executeFirestoreBatch(
+      ids.map((id) => ({
+        id,
+        collectionName: 'dars_accounts',
+        type: 'update' as const,
+        data: { ...updates, updatedAt: now },
+      }))
+    );
+
+    batchAuditManager.registerUndoableAction({
+      title: `Updated ${ids.length} Dars accounts`,
+      collectionName: 'dars_accounts',
+      itemCount: ids.length,
+      snapshot: prevSnapshots,
+      onUndo: async () => {
+        const revertMap = new Map(prevSnapshots.map((item) => [item.id, item.prevData]));
+        const reverted = darsAccounts.map((a) => (revertMap.has(a.id) ? { ...a, ...revertMap.get(a.id)! } : a));
+        setDarsAccounts(reverted);
+        persist(STORAGE_KEYS.DARS_ACCOUNTS, reverted);
+        await executeFirestoreBatch(
+          prevSnapshots.map((item) => ({ id: item.id, collectionName: 'dars_accounts', type: 'update' as const, data: item.prevData }))
+        );
+      },
+    });
+  };
+
+  const bulkDeleteDarsAccounts = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const updated = darsAccounts.filter((a) => !idSet.has(a.id) && !idSet.has(a.regNo));
+    setDarsAccounts(updated);
+    persist(STORAGE_KEYS.DARS_ACCOUNTS, updated);
+    await executeFirestoreBatch(
+      ids.map((id) => ({ id, collectionName: 'dars_accounts', type: 'delete' as const }))
+    );
+  };
+
+  const bulkResetDarsPasswords = async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    const prevSnapshots = darsAccounts
+      .filter((a) => idSet.has(a.id) || idSet.has(a.regNo))
+      .map((a) => ({ id: a.id, prevData: { password: a.password } }));
+
+    const updated = darsAccounts.map((a) => {
+      if (idSet.has(a.id) || idSet.has(a.regNo)) {
+        const newPassword = generateDarsPassword(a.regNo);
+        return { ...a, password: newPassword, updatedAt: now };
+      }
+      return a;
+    });
+
+    setDarsAccounts(updated);
+    persist(STORAGE_KEYS.DARS_ACCOUNTS, updated);
+
+    const mutations = ids.map((id) => {
+      const acc = updated.find((a) => a.id === id || a.regNo === id);
+      return {
+        id,
+        collectionName: 'dars_accounts',
+        type: 'update' as const,
+        data: { password: acc?.password, updatedAt: now },
+      };
+    });
+
+    await executeFirestoreBatch(mutations);
+
+    batchAuditManager.registerUndoableAction({
+      title: `Reset passwords for ${ids.length} Dars accounts`,
+      collectionName: 'dars_accounts',
+      itemCount: ids.length,
+      snapshot: prevSnapshots,
+      onUndo: async () => {
+        const revertMap = new Map(prevSnapshots.map((item) => [item.id, item.prevData]));
+        const reverted = darsAccounts.map((a) => (revertMap.has(a.id) ? { ...a, ...revertMap.get(a.id)! } : a));
+        setDarsAccounts(reverted);
+        persist(STORAGE_KEYS.DARS_ACCOUNTS, reverted);
+        await executeFirestoreBatch(
+          prevSnapshots.map((item) => ({ id: item.id, collectionName: 'dars_accounts', type: 'update' as const, data: item.prevData }))
+        );
+      },
+    });
   };
 
   const seedDarsAccounts = async (): Promise<{ count: number; seeded: DarsAccount[] }> => {
@@ -884,6 +1424,38 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     status: 'pending' | 'confirmed' | 'cancelled'
   ) => {
     await updateRegistration(id, { status });
+
+    // Automatic trigger on status change
+    const target = registrations.find((r) => r.id === id);
+    if (target) {
+      const eventType =
+        status === 'confirmed'
+          ? 'status_confirmed'
+          : status === 'cancelled'
+          ? 'status_cancelled'
+          : 'status_pending';
+
+      const passUrl = typeof window !== 'undefined' ? `${window.location.origin}/#pass` : 'https://alathurpadidars.in/#pass';
+      dispatchNotification({
+        recipientId: target.id,
+        recipientName: target.fullName,
+        recipientPhone: target.phone,
+        recipientEmail: target.email,
+        channels: target.email ? ['email', 'web_push', 'in_app'] : ['web_push', 'in_app'],
+        eventType,
+        vars: {
+          fullName: target.fullName,
+          phone: target.phone,
+          email: target.email,
+          regCode: target.regCode || target.id,
+          id: target.id,
+          darsName: target.darsName,
+          darsRegNo: target.darsRegNo,
+          status,
+          passUrl,
+        },
+      }).catch((e) => console.warn('Status change notification dispatch error:', e));
+    }
   };
 
   const archiveRegistration = async (id: string, reason?: string) => {
@@ -931,78 +1503,105 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {}
   };
 
+  const bulkUpdateRegistrations = async (ids: string[], updates: Partial<Registration>) => {
+    if (ids.length === 0) return;
+    const idSet = new Set(ids);
+    const now = new Date().toISOString();
+    const prevSnapshots = registrations
+      .filter((r) => idSet.has(r.id))
+      .map((r) => ({ id: r.id, prevData: { ...r } }));
+
+    const cleanUpdates = { ...updates, updatedAt: now };
+    const updated = registrations.map((r) =>
+      idSet.has(r.id) ? { ...r, ...cleanUpdates } : r
+    );
+    setRegistrations(updated);
+    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+
+    await executeFirestoreBatch(
+      ids.map((id) => ({
+        id,
+        collectionName: 'registrations',
+        type: 'update' as const,
+        data: cleanUpdates,
+      }))
+    );
+
+    batchAuditManager.registerUndoableAction({
+      title: `Updated ${ids.length} registrations`,
+      collectionName: 'registrations',
+      itemCount: ids.length,
+      snapshot: prevSnapshots,
+      onUndo: async () => {
+        const revertMap = new Map(prevSnapshots.map((item) => [item.id, item.prevData]));
+        const reverted = registrations.map((r) => (revertMap.has(r.id) ? { ...r, ...revertMap.get(r.id)! } : r));
+        setRegistrations(reverted);
+        persist(STORAGE_KEYS.REGISTRATIONS, reverted);
+        await executeFirestoreBatch(
+          prevSnapshots.map((item) => ({ id: item.id, collectionName: 'registrations', type: 'update' as const, data: item.prevData }))
+        );
+      },
+    });
+  };
+
   const bulkUpdateRegistrationStatus = async (
     ids: string[],
     status: 'pending' | 'confirmed' | 'cancelled'
   ) => {
     if (ids.length === 0) return;
-    const idSet = new Set(ids);
-    const now = new Date().toISOString();
-    const updated = registrations.map((r) =>
-      idSet.has(r.id) ? { ...r, status, updatedAt: now } : r
-    );
-    setRegistrations(updated);
-    persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    await bulkUpdateRegistrations(ids, { status });
+
+    // Batch Dispatch Notifications
     try {
-      await Promise.all(
-        ids.map((id) => updateDoc(doc(db, 'registrations', id), { status, updatedAt: now }))
-      );
+      const passUrl = typeof window !== 'undefined' ? `${window.location.origin}/#pass` : 'https://alathurpadidars.in/#pass';
+      const eventType =
+        status === 'confirmed'
+          ? 'status_confirmed'
+          : status === 'cancelled'
+          ? 'status_cancelled'
+          : 'status_pending';
+
+      const idSet = new Set(ids);
+      const affected = registrations.filter((r) => idSet.has(r.id));
+      affected.forEach((attendee) => {
+        dispatchNotification({
+          recipientId: attendee.id,
+          recipientName: attendee.fullName,
+          recipientPhone: attendee.phone,
+          recipientEmail: attendee.email,
+          channels: attendee.email ? ['email', 'web_push'] : ['web_push'],
+          eventType,
+          vars: {
+            fullName: attendee.fullName,
+            phone: attendee.phone,
+            email: attendee.email,
+            regCode: attendee.regCode || attendee.id,
+            id: attendee.id,
+            darsName: attendee.darsName,
+            status,
+            passUrl,
+          },
+        }).catch(() => {});
+      });
     } catch (e) {}
   };
 
   const bulkArchiveRegistrations = async (ids: string[]) => {
     if (ids.length === 0) return;
-    const idSet = new Set(ids);
     const now = new Date().toISOString();
-    const updated = registrations.map((r) =>
-      idSet.has(r.id)
-        ? { ...r, isArchived: true, archivedAt: now, updatedAt: now }
-        : r
-    );
-    setRegistrations(updated);
-    persist(STORAGE_KEYS.REGISTRATIONS, updated);
-    try {
-      await Promise.all(
-        ids.map((id) =>
-          updateDoc(doc(db, 'registrations', id), {
-            isArchived: true,
-            archivedAt: now,
-            updatedAt: now,
-          })
-        )
-      );
-    } catch (e) {}
+    await bulkUpdateRegistrations(ids, {
+      isArchived: true,
+      archivedAt: now,
+      archivedReason: 'Bulk archived by admin',
+    });
   };
 
   const bulkUnarchiveRegistrations = async (ids: string[]) => {
     if (ids.length === 0) return;
-    const idSet = new Set(ids);
-    const now = new Date().toISOString();
-    const updated = registrations.map((r) =>
-      idSet.has(r.id)
-        ? {
-            ...r,
-            isArchived: false,
-            archivedAt: undefined,
-            archivedReason: undefined,
-            updatedAt: now,
-          }
-        : r
-    );
-    setRegistrations(updated);
-    persist(STORAGE_KEYS.REGISTRATIONS, updated);
-    try {
-      await Promise.all(
-        ids.map((id) =>
-          updateDoc(doc(db, 'registrations', id), {
-            isArchived: false,
-            archivedAt: null,
-            archivedReason: null,
-            updatedAt: now,
-          })
-        )
-      );
-    } catch (e) {}
+    await bulkUpdateRegistrations(ids, {
+      isArchived: false,
+      archivedReason: undefined,
+    });
   };
 
   const bulkDeleteRegistrations = async (ids: string[]) => {
@@ -1011,9 +1610,9 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     const updated = registrations.filter((r) => !idSet.has(r.id));
     setRegistrations(updated);
     persist(STORAGE_KEYS.REGISTRATIONS, updated);
-    try {
-      await Promise.all(ids.map((id) => deleteDoc(doc(db, 'registrations', id))));
-    } catch (e) {}
+    await executeFirestoreBatch(
+      ids.map((id) => ({ id, collectionName: 'registrations', type: 'delete' as const }))
+    );
   };
 
   const exportRegistrationsCSV = (
@@ -1117,25 +1716,44 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         addSession,
         updateSession,
         deleteSession,
+        bulkUpdateSessions,
+        bulkDeleteSessions,
+        bulkTimeShiftSessions,
         addGuest,
         updateGuest,
         deleteGuest,
+        bulkUpdateGuests,
+        bulkDeleteGuests,
         addFAQ,
         updateFAQ,
         deleteFAQ,
+        bulkUpdateFAQs,
+        bulkDeleteFAQs,
         addAudioTrack,
         updateAudioTrack,
         deleteAudioTrack,
         reorderAudioTracks,
+        galleryItems,
+        addGalleryItem,
+        updateGalleryItem,
+        deleteGalleryItem,
+        bulkUpdateGalleryItems,
+        bulkDeleteGalleryItems,
+        reorderGalleryItems,
         darsList,
         addDars,
         updateDars,
         deleteDars,
+        bulkUpdateDars,
+        bulkDeleteDars,
         resetDarsToDefault,
         darsAccounts,
         addDarsAccount,
         updateDarsAccount,
         deleteDarsAccount,
+        bulkUpdateDarsAccounts,
+        bulkDeleteDarsAccounts,
+        bulkResetDarsPasswords,
         seedDarsAccounts,
         exportDarsCredentialsCSV,
         addStudentForDars,
@@ -1148,6 +1766,7 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         archiveRegistration,
         unarchiveRegistration,
         deleteRegistration,
+        bulkUpdateRegistrations,
         bulkUpdateRegistrationStatus,
         bulkArchiveRegistrations,
         bulkUnarchiveRegistrations,

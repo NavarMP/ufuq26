@@ -2,10 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import BrandLogo from '@/components/BrandLogo';
 import { useApp } from '@/context/AppContext';
 import AudioPill from '@/components/audio/AudioPill';
 import ReminderPillBadge from '@/components/reminders/ReminderPillBadge';
+import NotificationBellBadge from '@/components/notifications/NotificationBellBadge';
 import UnifiedLoginModal from '@/components/UnifiedLoginModal';
 import SettingsTrigger from '@/components/settings/SettingsTrigger';
 import ShareTriggerButton from '@/components/share/ShareTriggerButton';
@@ -26,6 +27,7 @@ import {
   Sparkles,
   Share2,
   Compass,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface NavigationProps {
@@ -84,10 +86,8 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
           className="flex items-center gap-2 group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-full px-1 py-0.5 hover:opacity-90 transition-opacity shrink-0"
           aria-label="UFUQ '26 Home"
         >
-          <div className="relative w-7 h-7 rounded-full overflow-hidden flex items-center justify-center bg-brand-navy p-1 shadow-inner border border-brand-gold/30 group-hover:border-brand-gold transition-colors">
-            <Image
-              src="/images/UFUQ-Logo.svg"
-              alt="UFUQ '26 Logo"
+          <div className="relative w-7 h-7 rounded-full overflow-hidden flex items-center justify-center bg-[var(--logo-tile)] p-1 shadow-inner border border-brand-gold/30 group-hover:border-brand-gold transition-colors">
+            <BrandLogo
               width={22}
               height={22}
               className="object-contain"
@@ -121,15 +121,17 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
           </button>
 
           {/* Share Hub Button */}
-          <ShareTriggerButton variant="icon" label={t('share.title') || "Share UFUQ '26"} />
+          {/* <ShareTriggerButton variant="icon" label={t('share.title') || "Share UFUQ '26"} /> */}
 
           {/* Background Music Pill */}
           <div data-tour="audio" className="inline-flex">
             <AudioPill compact={false} />
           </div>
 
-          {/* Camp Reminders Pill */}
-          <ReminderPillBadge compact={false} />
+          {/* Notifications & Summit Alerts */}
+          <div data-tour="notifications" className="inline-flex">
+            <NotificationBellBadge compact={false} />
+          </div>
 
           {/* Language Selector Dropdown */}
           <div className="relative" data-tour="language">
@@ -249,8 +251,28 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
           {/* Global Preferences / Settings Button */}
           <SettingsTrigger variant="navbar-desktop" />
 
-          {/* Interactive Guide & Experience Manual Link */}
+          {/* Schedule Masterpiece Link */}
           <Link
+            href="/schedule"
+            className="p-2 rounded-full text-neutral-600 dark:text-neutral-300 hover:text-brand-gold dark:hover:text-brand-gold hover:bg-black/5 dark:hover:bg-white/5 transition-colors focus:outline-none"
+            title={t('nav.schedule') || 'Schedule & Timetable'}
+            aria-label="Schedule"
+          >
+            <Calendar className="w-4 h-4" />
+          </Link>
+
+          {/* Gallery Showcase Link */}
+          <Link
+            href="/gallery"
+            className="p-2 rounded-full text-neutral-600 dark:text-neutral-300 hover:text-brand-gold dark:hover:text-brand-gold hover:bg-black/5 dark:hover:bg-white/5 transition-colors focus:outline-none"
+            title={t('nav.gallery') || 'Gallery & Horizons'}
+            aria-label="Gallery"
+          >
+            <ImageIcon className="w-4 h-4" />
+          </Link>
+
+          {/* Interactive Guide & Experience Manual Link */}
+          {/* <Link
             href="/guide"
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-brand-gold hover:text-brand-gold-light bg-brand-gold/10 hover:bg-brand-gold/20 border border-brand-gold/30 transition-colors focus:outline-none"
             title="Interactive Guide & How to Use"
@@ -258,7 +280,7 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
           >
             <Compass className="w-3.5 h-3.5" />
             <span className="hidden xl:inline">{language === 'ml' ? 'വഴികാട്ടി' : language === 'ar' ? 'الدليل' : 'Guide'}</span>
-          </Link>
+          </Link> */}
 
           {/* Unified Login Button (single portal entry for both Dars & Admin) */}
           <button
@@ -295,10 +317,8 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
           className="flex items-center gap-2"
           aria-label="UFUQ '26 Home"
         >
-          <div className="w-7 h-7 rounded-full bg-brand-navy p-1 flex items-center justify-center border border-brand-gold/30">
-            <Image
-              src="/images/UFUQ-Logo.svg"
-              alt="UFUQ '26"
+          <div className="w-7 h-7 rounded-full bg-[var(--logo-tile)] p-1 flex items-center justify-center border border-brand-gold/30">
+            <BrandLogo
               width={22}
               height={22}
               className="object-contain"
@@ -319,7 +339,7 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
             <Search className="w-4 h-4" />
           </button>
           <AudioPill compact={true} />
-          <ReminderPillBadge compact={true} />
+          <NotificationBellBadge compact={true} />
           <SettingsTrigger variant="navbar-mobile" />
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -369,11 +389,8 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
               {t('nav.about')}
             </Link>
             <Link
-              href="/#schedule"
-              onClick={(e) => {
-                handleSectionClick(e, 'schedule');
-                setIsMobileMenuOpen(false);
-              }}
+              href="/schedule"
+              onClick={() => setIsMobileMenuOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral-200 hover:bg-white/10 transition-colors"
             >
               <Calendar className="w-4 h-4 text-brand-gold" />
@@ -389,6 +406,14 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
             >
               <Users className="w-4 h-4 text-brand-gold" />
               {t('nav.guests')}
+            </Link>
+            <Link
+              href="/gallery"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-neutral-200 hover:bg-white/10 transition-colors"
+            >
+              <ImageIcon className="w-4 h-4 text-brand-gold" />
+              {t('nav.gallery') || 'Gallery & Horizons'}
             </Link>
             <Link
               href="/guide"
@@ -505,7 +530,7 @@ export default function Navigation({ onOpenSearch }: NavigationProps) {
           <span className="text-[10px]">{t('nav.home')}</span>
         </Link>
         <Link
-          href="#schedule"
+          href="/schedule"
           className="flex flex-col items-center gap-0.5 text-neutral-600 dark:text-neutral-400 hover:text-brand-gold py-1 px-2"
         >
           <Calendar className="w-4 h-4" />

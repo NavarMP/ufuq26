@@ -92,14 +92,14 @@ export default function HeroSection() {
       {/* Organizer badge */}
       <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-panel border border-brand-gold/30 text-xs font-semibold text-brand-navy dark:text-brand-gold-light mb-6 shadow-sm">
         <span className="w-2 h-2 rounded-full bg-brand-gold animate-pulse" />
-        <span>Alathurpadi Dars Students Association (ADSA) Presents</span>
+        <span>Alathurpadi Dars Students Association Presents</span>
       </div>
 
       {/* Hero Typography */}
       <div className="space-y-4 max-w-4xl mx-auto">
         {/* Arabic Calligraphy Typography */}
         <h2 className="font-arabic text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-brand-gold font-bold tracking-wide select-none drop-shadow-md">
-          {eventInfo.titleArabic || 'أُفُق'}
+          {eventInfo.titleArabic || 'أفق'}
         </h2>
 
         {/* English Title & Descriptor */}
@@ -140,69 +140,50 @@ export default function HeroSection() {
         </a>
       </div>
 
-      {/* Countdown Timer */}
-      <div className="mb-8 p-4 sm:p-5 rounded-3xl glass-panel border border-brand-gold/30 shadow-xl max-w-md w-full">
-        {preferences.countdownFormat === 'compact' ? (
+      {/* Countdown Grid */}
+      {preferences.countdownFormat === 'compact' ? (
+        <div className="my-6 p-4 rounded-3xl glass-panel border border-brand-gold/25 shadow-xl max-w-md w-full">
           <div className="flex items-center justify-center gap-2 py-1 text-xs font-mono font-bold text-brand-navy dark:text-brand-gold-light">
             <Clock className="w-4 h-4 text-brand-gold shrink-0" />
             <span>
               {timeLeft.days}d : {timeLeft.hours}h : {timeLeft.minutes}m : {timeLeft.seconds}s until camp
             </span>
           </div>
-        ) : preferences.countdownFormat === 'days' ? (
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2 flex items-center justify-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-brand-gold" />
-              <span>Days Remaining</span>
+        </div>
+      ) : (
+        <div className="my-6 p-4 md:p-6 rounded-3xl glass-panel border border-brand-gold/25 shadow-xl max-w-lg w-full">
+          <div className="text-[11px] font-semibold text-brand-teal dark:text-emerald-400 uppercase tracking-wider mb-3 flex items-center justify-center gap-1.5">
+            <Clock className="w-3.5 h-3.5" />
+            <span>{t('hero.daysLeft')}</span>
+          </div>
+          <div className="grid grid-cols-4 gap-2 text-center">
+            <div className="flex flex-col p-2.5 rounded-2xl bg-white/60 dark:bg-black/40 border border-brand-gold/15">
+              <span className="font-clash font-extrabold text-2xl md:text-3xl text-brand-navy dark:text-brand-gold-light">
+                {timeLeft.days}
+              </span>
+              <span className="text-[10px] text-neutral-500 uppercase mt-0.5">Days</span>
             </div>
-            <div className="flex items-center justify-center gap-4">
-              <div className="flex flex-col items-center px-6 py-2 rounded-2xl bg-brand-gold/15 border border-brand-gold/30">
-                <span className="font-clash font-extrabold text-3xl sm:text-4xl text-brand-navy dark:text-brand-gold-light">
-                  {timeLeft.days}
-                </span>
-                <span className="text-[10px] text-brand-gold font-bold uppercase">Days to Camp</span>
-              </div>
-              <div className="text-xs font-mono text-neutral-500 dark:text-neutral-400">
-                {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s
-              </div>
+            <div className="flex flex-col p-2.5 rounded-2xl bg-white/60 dark:bg-black/40 border border-brand-gold/15">
+              <span className="font-clash font-extrabold text-2xl md:text-3xl text-brand-navy dark:text-brand-gold-light">
+                {timeLeft.hours}
+              </span>
+              <span className="text-[10px] text-neutral-500 uppercase mt-0.5">Hours</span>
+            </div>
+            <div className="flex flex-col p-2.5 rounded-2xl bg-white/60 dark:bg-black/40 border border-brand-gold/15">
+              <span className="font-clash font-extrabold text-2xl md:text-3xl text-brand-navy dark:text-brand-gold-light">
+                {timeLeft.minutes}
+              </span>
+              <span className="text-[10px] text-neutral-500 uppercase mt-0.5">Mins</span>
+            </div>
+            <div className="flex flex-col p-2.5 rounded-2xl bg-white/60 dark:bg-black/40 border border-brand-gold/15">
+              <span className="font-clash font-extrabold text-2xl md:text-3xl text-brand-gold">
+                {timeLeft.seconds}
+              </span>
+              <span className="text-[10px] text-neutral-500 uppercase mt-0.5">Secs</span>
             </div>
           </div>
-        ) : (
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3 flex items-center justify-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-brand-gold" />
-              <span>Camp Countdown</span>
-            </div>
-
-            <div className="grid grid-cols-4 gap-2 sm:gap-3 text-center">
-              <div className="p-2 sm:p-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-white/10 flex flex-col">
-                <span className="font-clash font-extrabold text-2xl sm:text-3xl text-brand-navy dark:text-brand-gold">
-                  {timeLeft.days}
-                </span>
-                <span className="text-[10px] text-neutral-500 uppercase mt-0.5">Days</span>
-              </div>
-              <div className="p-2 sm:p-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-white/10 flex flex-col">
-                <span className="font-clash font-extrabold text-2xl sm:text-3xl text-brand-navy dark:text-brand-gold">
-                  {timeLeft.hours}
-                </span>
-                <span className="text-[10px] text-neutral-500 uppercase mt-0.5">Hours</span>
-              </div>
-              <div className="p-2 sm:p-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-white/10 flex flex-col">
-                <span className="font-clash font-extrabold text-2xl sm:text-3xl text-brand-navy dark:text-brand-gold">
-                  {timeLeft.minutes}
-                </span>
-                <span className="text-[10px] text-neutral-500 uppercase mt-0.5">Mins</span>
-              </div>
-              <div className="p-2 sm:p-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-white/10 flex flex-col">
-                <span className="font-clash font-extrabold text-2xl sm:text-3xl text-brand-navy dark:text-brand-gold">
-                  {timeLeft.seconds}
-                </span>
-                <span className="text-[10px] text-neutral-500 uppercase mt-0.5">Secs</span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Actions: Register CTA + Multi-Provider Add to Calendar + Systematic Reminder */}
       <div className="flex flex-wrap items-center justify-center gap-3 mt-2">

@@ -77,7 +77,7 @@ const DEFAULT_PREFERENCES: PreferencesState = {
   smoothScrollInertia: 'glide',
   lowPowerMode: false,
 
-  countdownFormat: 'days',
+  countdownFormat: 'full',
   sessionRemindersEnabled: false,
   reminderLeadMinutes: 15,
   autoSaveDrafts: true,
@@ -152,9 +152,13 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
+        if (parsed.countdownFormat === 'days') {
+          parsed.countdownFormat = 'full';
+        }
         setPreferencesState((prev) => ({
           ...prev,
           ...parsed,
+          countdownFormat: parsed.countdownFormat === 'days' ? 'full' : (parsed.countdownFormat || prev.countdownFormat),
           // Sync with AppContext if exists
           language: appLang || parsed.language || prev.language,
           theme: appTheme || parsed.theme || prev.theme,

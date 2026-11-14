@@ -78,7 +78,9 @@ export default function CampOfflineTab() {
         const cache = await caches.open('ufuq-offline-v1');
         await cache.addAll([
           '/',
-          '/images/UFUQ-Logo.svg',
+          '/images/UFUQ-Logo-app.svg',
+          '/images/UFUQ-Logo-dark.svg',
+          '/images/UFUQ-Logo-badge.svg',
           '/manifest.json',
           '/locales/en.json',
           '/locales/ml.json',
@@ -122,11 +124,10 @@ export default function CampOfflineTab() {
         <label className="block text-xs font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-2.5">
           Camp Countdown Format
         </label>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5">
           {[
-            { id: 'days' as const, label: 'Days Remaining', desc: 'e.g. 40 Days' },
-            { id: 'full' as const, label: 'Full Chronometer', desc: 'DD : HH : MM : SS' },
-            { id: 'compact' as const, label: 'Minimalist', desc: 'Single Badge' },
+            { id: 'full' as const, label: 'Full 4-Card Chronometer', desc: 'Days : Hours : Mins : Secs' },
+            { id: 'compact' as const, label: 'Minimalist Badge', desc: 'Single inline ticker' },
           ].map((c) => {
             const isSelected = preferences.countdownFormat === c.id;
             return (

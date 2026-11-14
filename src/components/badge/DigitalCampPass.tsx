@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import { Registration } from '@/types';
 import { ensureRegistrationCode, encodeQRPayload } from '@/lib/regCodeGenerator';
+import { useShare } from '@/hooks/useShare';
 import {
   RotateCw,
   Copy,
@@ -21,6 +22,8 @@ import {
   UtensilsCrossed,
   BookOpen,
   Home,
+  Download,
+  Share2,
 } from 'lucide-react';
 
 interface DigitalCampPassProps {
@@ -34,6 +37,7 @@ export default function DigitalCampPass({
   onOpenPrintModal,
   className = '',
 }: DigitalCampPassProps) {
+  const { openShare } = useShare();
   const reg = ensureRegistrationCode(registration);
   const [isFlipped, setIsFlipped] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -324,6 +328,52 @@ export default function DigitalCampPass({
           {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-brand-gold" />}
           <span>{copied ? 'Copied' : 'Copy ID'}</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            openShare(
+              {
+                title: `UFUQ ’26 Digital Pass — ${reg.fullName}`,
+                text: `Official Attendee Pass for UFUQ ’26 Leadership Camp. Reference: ${reg.id}`,
+                url: `https://alathurpadidars.in#register?ref=${reg.id}`,
+                type: 'pass',
+                badgeText: 'Attendee Pass',
+                attendee: {
+                  fullName: reg.fullName,
+                  refId: reg.id,
+                  darsName: reg.darsName,
+                  darsRegNo: reg.darsRegNo,
+                  darsMudarris: reg.darsMudarris,
+                  phone: reg.phone,
+                },
+              },
+              'story'
+            );
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-panel border border-brand-gold/25 hover:border-brand-gold text-xs font-semibold text-neutral-700 dark:text-neutral-200 transition-colors"
+          title="Generate and download shareable Story Card"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-brand-gold" />
+          <span>Story Card</span>
+        </button>
+
+        {qrUrl && (
+          <button
+            type="button"
+            onClick={() => {
+              const link = document.createElement('a');
+              link.href = qrUrl;
+              link.download = `UFUQ26_Pass_QR_${reg.regCode || reg.id}.png`;
+              link.click();
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl glass-panel border border-brand-gold/25 hover:border-brand-gold text-xs font-semibold text-neutral-700 dark:text-neutral-200 transition-colors"
+            title="Download QR code image for offline entry"
+          >
+            <Download className="w-3.5 h-3.5 text-brand-gold" />
+            <span>Save QR</span>
+          </button>
+        )}
 
         {onOpenPrintModal && (
           <button

@@ -1,15 +1,31 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, Circle, RotateCcw, Printer, Sparkles, ShieldCheck, Briefcase } from 'lucide-react';
+import {
+  CheckCircle2,
+  Circle,
+  RotateCcw,
+  Printer,
+  Sparkles,
+  ShieldCheck,
+  Briefcase,
+  Share2,
+} from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { useGuideStore } from '@/store/guideStore';
+import { useShare } from '@/hooks/useShare';
+import { useExport } from '@/hooks/useExport';
+import UniversalExportModal from '@/components/export/UniversalExportModal';
+import ExportTriggerButton from '@/components/export/ExportTriggerButton';
+import { ExportColumn, ExportPreset, ExportFormat, executeExport } from '@/lib/export';
 import { CHECKLIST_ITEMS } from '@/lib/guideData';
+import { ChecklistItem } from '@/types/guide';
 
 export default function DelegateChecklist() {
   const { language } = useApp();
   const { checkedItems, toggleChecklistItem, resetChecklist } = useGuideStore();
+  const { openShare } = useShare();
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'admission' | 'packing' | 'academic' | 'travel'>('all');
 
   const filteredItems = CHECKLIST_ITEMS.filter((item) => {
@@ -20,6 +36,70 @@ export default function DelegateChecklist() {
   const totalRequired = CHECKLIST_ITEMS.filter((i) => i.isRequired).length;
   const completedRequired = CHECKLIST_ITEMS.filter((i) => i.isRequired && checkedItems.includes(i.id)).length;
   const progressPercent = Math.round((checkedItems.length / CHECKLIST_ITEMS.length) * 100);
+
+  const {
+    isOpen: isExportModalOpen,
+    activeConfig: exportModalConfig,
+    isExporting,
+    openExport,
+    closeExport,
+    runExport,
+  } = useExport<ChecklistItem>();
+
+  const checklistColumns: ExportColumn<ChecklistItem>[] = useMemo(
+    () => [
+      { id: 'category', header: 'Category', accessor: (i) => i.category.toUpperCase(), width: 14, defaultVisible: true },
+      { id: 'text', header: 'Task / Item', accessor: (i) => i.text[language], width: 30, defaultVisible: true },
+      { id: 'detail', header: 'Instructions', accessor: (i) => i.detail[language], width: 35, defaultVisible: true },
+      { id: 'isRequired', header: 'Mandatory', accessor: (i) => (i.isRequired ? 'Yes' : 'Recommended'), width: 12, defaultVisible: true },
+      { id: 'status', header: 'Status', accessor: (i) => (checkedItems.includes(i.id) ? 'Completed' : 'Pending'), width: 14, defaultVisible: true },
+    ],
+    [language, checkedItems]
+  );
+
+  const handleOpenExportModal = () => {
+    openExport({
+      title: "UFUQ ’26 Delegate Readiness Checklist",
+      filenamePrefix: 'UFUQ26_Checklist',
+      data: filteredItems,
+      columns: checklistColumns,
+      presets: [
+        {
+          id: 'full_checklist',
+          title: 'Preparation Checklist (Excel)',
+          description: 'All admission, packing, academic, and travel items in Excel',
+          format: 'xlsx',
+          visibleColumnIds: checklistColumns.map((c) => c.id),
+        },
+        {
+          id: 'csv_checklist',
+          title: 'Field Checklist (CSV)',
+          description: 'Clean spreadsheet format for print and review',
+          format: 'csv',
+          visibleColumnIds: ['category', 'text', 'isRequired', 'status'],
+        },
+      ],
+      defaultFormat: 'xlsx',
+    });
+  };
+
+  const handleQuickExport = async (format: ExportFormat) => {
+    await executeExport(
+      {
+        title: "UFUQ ’26 Delegate Readiness Checklist",
+        filenamePrefix: 'UFUQ26_Checklist',
+        data: filteredItems,
+        columns: checklistColumns,
+        defaultFormat: 'xlsx',
+      },
+      {
+        format,
+        scope: 'filtered',
+        visibleColumnIds: checklistColumns.map((c) => c.id),
+        maskPii: false,
+      }
+    );
+  };
 
   const handlePrint = () => {
     if (typeof window !== 'undefined') {
@@ -45,6 +125,31 @@ export default function DelegateChecklist() {
             <Sparkles className="w-3.5 h-3.5" />
             <span>{progressPercent}% {language === 'ml' ? 'തയ്യാറായി' : language === 'ar' ? 'جاهز' : 'Ready'}</span>
           </div>
+
+          <ExportTriggerButton
+            label="Export"
+            count={filteredItems.length}
+            onOpenModal={handleOpenExportModal}
+            onQuickExport={handleQuickExport}
+            variant="glass"
+          />
+
+          <button
+            onClick={() => {
+              openShare({
+                title: `UFUQ ’26 Delegate Readiness: ${progressPercent}% Ready`,
+                text: `I have completed ${completedRequired} of ${totalRequired} mandatory preparations for UFUQ ’26 Transition & Leadership Camp! December 24–30, 2026 at Alathurpadi Dars Campus.`,
+                url: 'https://alathurpadidars.in/guide#checklist',
+                type: 'custom',
+                badgeText: `${progressPercent}% Ready`,
+              });
+            }}
+            className="p-2 rounded-xl bg-white dark:bg-white/10 border border-neutral-300 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:text-brand-gold transition-colors"
+            title="Share readiness status"
+            aria-label="Share readiness status"
+          >
+            <Share2 className="w-4 h-4 text-brand-gold" />
+          </button>
 
           <button
             onClick={handlePrint}
@@ -155,6 +260,15 @@ export default function DelegateChecklist() {
           </div>
         </div>
       </div>
+
+      {/* Universal Export Suite Modal */}
+      <UniversalExportModal
+        isOpen={isExportModalOpen}
+        onClose={closeExport}
+        config={exportModalConfig}
+        onExecute={runExport}
+        isExporting={isExporting}
+      />
     </section>
   );
 }

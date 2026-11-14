@@ -29,7 +29,7 @@ import {
 interface RegistrationTableProps {
   registrations: Registration[];
   selectedIds: string[];
-  onToggleSelect: (id: string) => void;
+  onToggleSelect: (id: string, index?: number, event?: React.MouseEvent | React.ChangeEvent) => void;
   onSelectAll: (all: boolean) => void;
   sortField: SortField;
   sortOrder: SortOrder;
@@ -168,7 +168,7 @@ export default function RegistrationTable({
           </thead>
 
           <tbody className="divide-y divide-brand-gold/10">
-            {registrations.map((reg) => {
+            {registrations.map((reg, idx) => {
               const isSelected = selectedIds.includes(reg.id);
               const waUrl = getWhatsAppUrl(reg.phone, reg.fullName, reg.id, reg.status);
 
@@ -185,12 +185,15 @@ export default function RegistrationTable({
                   {/* Checkbox */}
                   <td
                     className="py-3 px-3 text-center"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleSelect(reg.id, idx, e);
+                    }}
                   >
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => onToggleSelect(reg.id)}
+                      onChange={() => {}}
                       className="rounded border-brand-gold/30 text-brand-gold focus:ring-brand-gold/40 cursor-pointer"
                     />
                   </td>

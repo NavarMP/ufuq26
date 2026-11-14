@@ -6,12 +6,38 @@ import { useEvent } from '@/context/EventContext';
 import { useApp } from '@/context/AppContext';
 import { resolveLocalized } from '@/lib/translations';
 import { useShare } from '@/hooks/useShare';
-import { UserCheck, Info, User, Share2 } from 'lucide-react';
+import { UserCheck, Info, User, Share2, Contact, Check } from 'lucide-react';
+import { formatContactToVCard } from '@/lib/export/formatters/vcardFormatter';
+import { createTextBlob, triggerBlobDownload } from '@/lib/export/utils/downloadHelper';
+import toast from 'react-hot-toast';
 
 export default function GuestsSection() {
   const { guests } = useEvent();
   const { language, t } = useApp();
   const { openShare } = useShare();
+  const [downloadedVCardId, setDownloadedVCardId] = React.useState<string | null>(null);
+
+  const handleDownloadVCard = (guest: any) => {
+    const guestName = resolveLocalized(guest.name, language);
+    const guestTitle = guest.title ? resolveLocalized(guest.title, language) : '';
+    const vcardContent = formatContactToVCard({
+      id: guest.id,
+      fullName: guestName,
+      role: guestTitle || 'Keynote Scholar / Faculty',
+      organization: 'UFUQ ’26 — Alathurpadi Dars Students Association (ADSA)',
+      address: 'Alathurpadi Dars Campus, Malappuram, Kerala 676503',
+      note: guest.bio ? resolveLocalized(guest.bio, language) : 'Faculty Member at UFUQ ’26 Residential Camp.',
+      url: `https://alathurpadidars.in#guests?id=${guest.id}`,
+    });
+
+    const blob = createTextBlob(vcardContent, 'text/vcard', false);
+    const filename = `${guestName.replace(/[^a-zA-Z0-9]/g, '_')}_UFUQ26.vcf`;
+    triggerBlobDownload(blob, filename);
+
+    setDownloadedVCardId(guest.id);
+    toast.success(`Contact card for ${guestName} downloaded!`);
+    setTimeout(() => setDownloadedVCardId(null), 2500);
+  };
 
   const publishedGuests = guests.filter((g) => g.published);
 
@@ -33,12 +59,12 @@ export default function GuestsSection() {
       </div>
 
       {/* Sample Content Disclosure */}
-      <div className="mb-8 p-4 rounded-2xl glass-panel border border-brand-gold/40 flex items-start sm:items-center gap-3 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300">
+      {/* <div className="mb-8 p-4 rounded-2xl glass-panel border border-brand-gold/40 flex items-start sm:items-center gap-3 text-xs sm:text-sm text-neutral-700 dark:text-neutral-300">
         <Info className="w-5 h-5 text-brand-gold shrink-0 mt-0.5 sm:mt-0" />
         <p>
           <strong className="text-brand-gold">Faculty & Speakers:</strong> {t('guests.sampleLabel')}. Dignitaries, university professors, and guest mentors are being finalized by ADSA.
         </p>
-      </div>
+      </div> */}
 
       {/* Guests Grid */}
       {publishedGuests.length === 0 ? (
@@ -103,26 +129,42 @@ export default function GuestsSection() {
 
                 <div className="pt-4 mt-4 border-t border-brand-gold/10 flex items-center justify-between text-[11px] text-neutral-400">
                   <span className="font-mono text-brand-gold">UFUQ ’26 Faculty</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const guestName = resolveLocalized(guest.name, language);
-                      const guestTitle = guest.title ? resolveLocalized(guest.title, language) : '';
-                      openShare({
-                        title: `${guestName} — Speaker at UFUQ ’26`,
-                        text: `${guestName}${guestTitle ? ` (${guestTitle})` : ''} at UFUQ ’26 Transition & Leadership Camp. December 24–30, 2026.`,
-                        url: `https://alathurpadidars.in#guests?id=${guest.id}`,
-                        type: 'guest',
-                        badgeText: 'Guest Speaker',
-                        guest,
-                      });
-                    }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass-panel border border-brand-gold/20 hover:border-brand-gold text-neutral-700 dark:text-neutral-200 hover:text-brand-gold transition-colors text-[11px] font-semibold"
-                    title={`Share ${resolveLocalized(guest.name, language)}`}
-                  >
-                    <Share2 className="w-3.5 h-3.5 text-brand-gold" />
-                    <span>{t('share.shareSpeaker') || 'Share'}</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadVCard(guest)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full glass-panel border border-brand-gold/20 hover:border-brand-gold text-neutral-700 dark:text-neutral-200 hover:text-brand-gold transition-colors text-[11px] font-semibold"
+                      title={`Save contact card for ${resolveLocalized(guest.name, language)}`}
+                    >
+                      {downloadedVCardId === guest.id ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      ) : (
+                        <Contact className="w-3.5 h-3.5 text-brand-gold" />
+                      )}
+                      <span>{downloadedVCardId === guest.id ? 'Saved' : 'vCard'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const guestName = resolveLocalized(guest.name, language);
+                        const guestTitle = guest.title ? resolveLocalized(guest.title, language) : '';
+                        openShare({
+                          title: `${guestName} — Speaker at UFUQ ’26`,
+                          text: `${guestName}${guestTitle ? ` (${guestTitle})` : ''} at UFUQ ’26 Transition & Leadership Camp. December 24–30, 2026.`,
+                          url: `https://alathurpadidars.in#guests?id=${guest.id}`,
+                          type: 'guest',
+                          badgeText: 'Guest Speaker',
+                          guest,
+                        });
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full glass-panel border border-brand-gold/20 hover:border-brand-gold text-neutral-700 dark:text-neutral-200 hover:text-brand-gold transition-colors text-[11px] font-semibold"
+                      title={`Share ${resolveLocalized(guest.name, language)}`}
+                    >
+                      <Share2 className="w-3.5 h-3.5 text-brand-gold" />
+                      <span>{t('share.shareSpeaker') || 'Share'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );

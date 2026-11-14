@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import PlasticCardBadge from '@/components/badge/PlasticCardBadge';
 import { ensureRegistrationCode } from '@/lib/regCodeGenerator';
+import SendNoticeModal from './SendNoticeModal';
 
 interface RegistrationDetailDrawerProps {
   registration: Registration | null;
@@ -64,6 +65,7 @@ export default function RegistrationDetailDrawer({
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [notesSavedSuccess, setNotesSavedSuccess] = useState(false);
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
+  const [isNoticeModalOpen, setIsNoticeModalOpen] = useState(false);
 
   // Sync adminNotes when registration changes
   React.useEffect(() => {
@@ -174,8 +176,18 @@ export default function RegistrationDetailDrawer({
 
           {/* Drawer Scrollable Content */}
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Quick Contact Action Bar */}
-            <div className="grid grid-cols-4 gap-2">
+            {/* Quick Contact & Communication Action Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => setIsNoticeModalOpen(true)}
+                className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-gradient-to-r from-brand-gold to-brand-gold-hover text-brand-navy font-bold text-xs shadow-md transition-all hover:scale-[1.02] active:scale-95"
+                title="Send Omnichannel Notice (Email, SMS, WhatsApp, In-App)"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-brand-navy" />
+                <span>Send Notice</span>
+              </button>
+
               <a
                 href={waUrl}
                 target="_blank"
@@ -199,11 +211,11 @@ export default function RegistrationDetailDrawer({
               <button
                 type="button"
                 onClick={() => setIsBadgeModalOpen(true)}
-                className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-brand-gold text-brand-navy hover:bg-brand-gold-hover font-bold text-xs shadow transition-all col-span-2"
+                className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-100 font-semibold text-xs border border-white/10 shadow transition-all"
                 title="Preview & Print CR80 Plastic ID Card"
               >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print ID Badge</span>
+                <Printer className="w-3.5 h-3.5 text-brand-gold" />
+                <span>Print ID</span>
               </button>
             </div>
 
@@ -492,6 +504,15 @@ export default function RegistrationDetailDrawer({
             />
           </div>
         </div>
+      )}
+
+      {/* Send Notice Modal */}
+      {isNoticeModalOpen && (
+        <SendNoticeModal
+          registration={registration}
+          isOpen={isNoticeModalOpen}
+          onClose={() => setIsNoticeModalOpen(false)}
+        />
       )}
     </div>
   );

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import BrandLogo from '@/components/BrandLogo';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Shield,
@@ -18,17 +18,21 @@ import {
   LogOut,
   X,
   DoorOpen,
+  Image as ImageIcon,
+  Bell,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 
 export type AdminTab =
   | 'dashboard'
   | 'registrations'
+  | 'notifications'
   | 'dars'
   | 'gate'
   | 'sessions'
   | 'guests'
   | 'faqs'
+  | 'gallery'
   | 'audio'
   | 'settings';
 
@@ -48,6 +52,7 @@ interface AdminSidebarProps {
     guests: number;
     faqs: number;
     audioTracks: number;
+    galleryItems?: number;
   };
 }
 
@@ -96,6 +101,12 @@ export default function AdminSidebar({
           count: counts.registrations,
         },
         {
+          id: 'notifications',
+          label: 'Comms & Broadcasts',
+          icon: Bell,
+          badge: 'NEW',
+        },
+        {
           id: 'dars',
           label: 'SUFFA Dars & Logins',
           icon: Building2,
@@ -135,6 +146,12 @@ export default function AdminSidebar({
     {
       title: 'Platform & Media',
       items: [
+        {
+          id: 'gallery',
+          label: 'Gallery Showcase',
+          icon: ImageIcon,
+          count: counts.galleryItems,
+        },
         {
           id: 'audio',
           label: 'Background Music',
@@ -233,10 +250,8 @@ export default function AdminSidebar({
             className="flex items-center gap-3 group focus:outline-none"
             title="Go to UFUQ '26 Live Public Site"
           >
-            <div className="w-10 h-10 rounded-2xl bg-brand-navy p-1.5 flex items-center justify-center shrink-0 border border-brand-gold/30 shadow-md group-hover:border-brand-gold transition-colors">
-              <Image
-                src="/images/UFUQ-Logo.svg"
-                alt="UFUQ '26"
+            <div className="w-10 h-10 rounded-2xl bg-[var(--logo-tile)] p-1.5 flex items-center justify-center shrink-0 border border-brand-gold/30 shadow-md group-hover:border-brand-gold transition-colors">
+              <BrandLogo
                 width={30}
                 height={30}
                 className="object-contain"

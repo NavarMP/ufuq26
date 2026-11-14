@@ -25,7 +25,7 @@ export interface SharePayload {
 }
 
 export type StoryTheme = 'horizon' | 'pass' | 'session' | 'guest';
-export type StoryFormat = 'story' | 'feed'; // story = 1080x1920 (9:16), feed = 1200x630 (1.91:1)
+export type StoryFormat = 'story' | 'square' | 'feed'; // story = 1080x1920 (9:16), square = 1080x1080 (1:1), feed = 1200x630 (1.91:1)
 
 export interface SocialChannel {
   id: string;

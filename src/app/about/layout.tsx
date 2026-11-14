@@ -12,9 +12,9 @@ export const metadata: Metadata = {
     siteName: "UFUQ ’26",
     images: [
       {
-        url: "/images/UFUQ-Logo.svg",
-        width: 1200,
-        height: 630,
+        url: "/images/UFUQ-Logo-app.svg",
+        width: 1080,
+        height: 1080,
         alt: "UFUQ ’26 About Page",
       },
     ],

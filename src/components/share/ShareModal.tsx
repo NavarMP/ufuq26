@@ -104,14 +104,38 @@ export default function ShareModal() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={closeShare}
-            aria-label="Close dialog"
-            className="p-1.5 rounded-full text-neutral-500 hover:text-brand-gold hover:bg-black/5 dark:hover:bg-white/5 transition-colors shrink-0"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.share({
+                      title: payload.title,
+                      text: payload.text || 'Rooted in Ilm. Ready for the World. December 24–30, 2026.',
+                      url: payload.url,
+                    });
+                  } catch {
+                    // user cancelled
+                  }
+                }}
+                aria-label="Open device share sheet"
+                className="p-1.5 rounded-full text-brand-gold hover:bg-brand-gold/15 transition-colors"
+                title="Open native device share sheet"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={closeShare}
+              aria-label="Close dialog"
+              className="p-1.5 rounded-full text-neutral-500 hover:text-brand-gold hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Navigation Tabs Bar */}
@@ -162,7 +186,7 @@ export default function ShareModal() {
         {/* Footer info pill */}
         <div className="px-5 py-2.5 bg-black/5 dark:bg-black/20 border-t border-brand-gold/15 flex items-center justify-between text-[11px] text-neutral-500">
           <span>Dec 24–30, 2026 · Alathurpadi</span>
-          <span className="font-arabic text-brand-gold">أُفُق — نحو الأفق الجديد</span>
+          <span className="font-arabic text-brand-gold">أفُق — نحو الأفق الجديد</span>
         </div>
       </div>
     </div>

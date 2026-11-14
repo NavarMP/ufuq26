@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
+import BrandLogo from '@/components/BrandLogo';
 import { useDarsAuth } from '@/context/DarsAuthContext';
 import { useEvent } from '@/context/EventContext';
 import { useApp } from '@/context/AppContext';
@@ -12,6 +12,10 @@ import BatchCardPrintModal from '@/components/badge/BatchCardPrintModal';
 import PlasticCardBadge from '@/components/badge/PlasticCardBadge';
 import ShareModal from '@/components/share/ShareModal';
 import ShareTriggerButton from '@/components/share/ShareTriggerButton';
+import { useExport } from '@/hooks/useExport';
+import UniversalExportModal from '@/components/export/UniversalExportModal';
+import ExportTriggerButton from '@/components/export/ExportTriggerButton';
+import { ExportColumn, ExportPreset, ExportFormat, executeExport } from '@/lib/export';
 import {
   Building2,
   Phone,
@@ -256,28 +260,86 @@ export default function DarsPortalPage() {
   };
 
   // Export CSV
-  const handleExportCSV = () => {
-    if (!currentDars) return;
-    const headers = ['Sl No', 'Reg ID', 'Full Name', 'Phone', 'Email', 'Status', 'Date Submitted'];
-    const rows = darsStudents.map((s, idx) => [
-      idx + 1,
-      s.id,
-      `"${(s.fullName || '').replace(/"/g, '""')}"`,
-      s.phone,
-      s.email || '',
-      s.status,
-      new Date(s.submittedAt).toLocaleDateString(),
-    ]);
+  const {
+    isOpen: isExportModalOpen,
+    activeConfig: exportModalConfig,
+    isExporting,
+    openExport,
+    closeExport,
+    runExport,
+  } = useExport<Registration>();
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${currentDars.regNo}_students_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const studentColumns: ExportColumn<Registration>[] = useMemo(
+    () => [
+      { id: 'id', header: 'Reference ID', accessor: (s) => s.id, width: 14, defaultVisible: true },
+      { id: 'fullName', header: 'Student Name', accessor: (s) => s.fullName, width: 25, defaultVisible: true },
+      { id: 'phone', header: 'Phone Number', accessor: (s) => s.phone, width: 16, defaultVisible: true, isPii: true },
+      { id: 'email', header: 'Email Address', accessor: (s) => s.email || '—', width: 22, defaultVisible: true, isPii: true },
+      { id: 'status', header: 'Verification Status', accessor: (s) => s.status.toUpperCase(), width: 14, defaultVisible: true },
+      { id: 'gateStatus', header: 'Gate Status', accessor: (s) => (s.gateStatus || 'outside').toUpperCase(), width: 12, defaultVisible: true },
+      { id: 'submittedAt', header: 'Nomination Date', accessor: (s) => new Date(s.submittedAt).toLocaleDateString(), width: 16, defaultVisible: true },
+    ],
+    []
+  );
+
+  const studentPresets: ExportPreset<Registration>[] = useMemo(
+    () => [
+      {
+        id: 'delegation_full',
+        title: 'Official Delegation Roster',
+        description: 'Complete student list in Excel workbook',
+        format: 'xlsx',
+        visibleColumnIds: studentColumns.map((c) => c.id),
+      },
+      {
+        id: 'verification_manifest',
+        title: 'Mudarris Verification Sheet',
+        description: 'Student Name, Phone, and Verification Status',
+        format: 'csv',
+        visibleColumnIds: ['id', 'fullName', 'phone', 'status', 'submittedAt'],
+      },
+      {
+        id: 'safe_roster',
+        title: 'Public Redacted Roster',
+        description: 'Masks phone numbers for committee submission',
+        format: 'xlsx',
+        maskPii: true,
+        visibleColumnIds: ['id', 'fullName', 'phone', 'status', 'submittedAt'],
+      },
+    ],
+    [studentColumns]
+  );
+
+  const handleOpenStudentExport = () => {
+    if (!currentDars) return;
+    openExport({
+      title: `${currentDars.darsNameEn} — UFUQ ’26 Student Delegation`,
+      filenamePrefix: `${currentDars.regNo}_Students`,
+      data: filteredStudents,
+      columns: studentColumns,
+      presets: studentPresets,
+      defaultFormat: 'xlsx',
+    });
+  };
+
+  const handleQuickStudentExport = async (format: ExportFormat) => {
+    if (!currentDars) return;
+    await executeExport(
+      {
+        title: `${currentDars.darsNameEn} — UFUQ ’26 Student Delegation`,
+        filenamePrefix: `${currentDars.regNo}_Students`,
+        data: filteredStudents,
+        columns: studentColumns,
+        presets: studentPresets,
+        defaultFormat: 'xlsx',
+      },
+      {
+        format,
+        scope: 'filtered',
+        visibleColumnIds: studentColumns.filter((c) => c.defaultVisible !== false).map((c) => c.id),
+        maskPii: false,
+      }
+    );
   };
 
   // Print Roster
@@ -305,10 +367,8 @@ export default function DarsPortalPage() {
           {/* Logo & Header */}
           <div className="text-center space-y-3">
             <Link href="/" className="inline-block group">
-              <div className="w-16 h-16 rounded-2xl bg-brand-navy p-2 flex items-center justify-center mx-auto border border-brand-gold/40 shadow-lg group-hover:scale-105 transition-transform">
-                <Image
-                  src="/images/UFUQ-Logo.svg"
-                  alt="UFUQ '26 Logo"
+              <div className="w-16 h-16 rounded-2xl bg-[var(--logo-tile)] p-2 flex items-center justify-center mx-auto border border-brand-gold/40 shadow-lg group-hover:scale-105 transition-transform">
+                <BrandLogo
                   width={42}
                   height={42}
                   className="object-contain"
@@ -433,10 +493,8 @@ export default function DarsPortalPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link href="/" className="shrink-0 group">
-              <div className="w-10 h-10 rounded-xl bg-brand-navy p-1.5 flex items-center justify-center border border-brand-gold/30">
-                <Image
-                  src="/images/UFUQ-Logo.svg"
-                  alt="UFUQ '26 Logo"
+              <div className="w-10 h-10 rounded-xl bg-[var(--logo-tile)] p-1.5 flex items-center justify-center border border-brand-gold/30">
+                <BrandLogo
                   width={28}
                   height={28}
                   className="object-contain"
@@ -587,14 +645,12 @@ export default function DarsPortalPage() {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={handleExportCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-300 text-xs font-semibold transition-colors"
-              title="Download CSV of students"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
-            </button>
+            <ExportTriggerButton
+              label="Export Roster"
+              count={filteredStudents.length}
+              onOpenModal={handleOpenStudentExport}
+              onQuickExport={handleQuickStudentExport}
+            />
 
             <button
               onClick={handlePrint}
@@ -1002,6 +1058,15 @@ export default function DarsPortalPage() {
 
       {/* Global Share Hub Modal */}
       <ShareModal />
+
+      {/* Universal Export Suite Modal */}
+      <UniversalExportModal
+        isOpen={isExportModalOpen}
+        onClose={closeExport}
+        config={exportModalConfig}
+        onExecute={runExport}
+        isExporting={isExporting}
+      />
     </div>
   );
 }

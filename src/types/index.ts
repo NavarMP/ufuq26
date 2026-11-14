@@ -41,6 +41,7 @@ export interface ScheduleSession {
   description?: LocalizedString;
   speaker?: string; // reference to guest ID
   category?: string;
+  location?: string;
   published: boolean;
   order: number;
 }
@@ -73,6 +74,7 @@ export interface SuffaDars {
   mudarris: string;
   phone: string;
   district?: string;
+  place?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -237,3 +239,9 @@ export interface AudioTrack {
   isDefault?: boolean;
   uploadedAt?: string;
 }
+
+export * from './gallery';
+export * from './notification';
+export * from './schedule';
+
+

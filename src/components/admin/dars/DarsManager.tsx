@@ -21,6 +21,16 @@ import {
 } from 'lucide-react';
 import { DarsAccount, SuffaDars, Registration } from '@/types';
 import { normalizePhone } from '@/lib/authHelpers';
+import { useExport } from '@/hooks/useExport';
+import UniversalExportModal from '@/components/export/UniversalExportModal';
+import ExportTriggerButton from '@/components/export/ExportTriggerButton';
+import {
+  ExportColumn,
+  ExportPreset,
+  UniversalExportConfig,
+  ExportFormat,
+  executeExport,
+} from '@/lib/export';
 import DarsAccountModal from './DarsAccountModal';
 import DarsEditModal from './DarsEditModal';
 import ConfirmDialog from '../shared/ConfirmDialog';
@@ -160,6 +170,147 @@ UFUQ '26 റസിഡൻസി ക്യാമ്പിലേക്ക് നി
     );
   }, [darsList, darsSearch]);
 
+  const studentCountsByDars = useMemo(() => {
+    const map: Record<string, number> = {};
+    registrations.forEach((r) => {
+      const key = r.darsRegNo || r.darsId || '';
+      if (key) map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }, [registrations]);
+
+  const {
+    isOpen: isExportModalOpen,
+    activeConfig: exportModalConfig,
+    isExporting,
+    openExport,
+    closeExport,
+    runExport,
+  } = useExport<any>();
+
+  const darsAccountColumns: ExportColumn<DarsAccount>[] = useMemo(
+    () => [
+      { id: 'regNo', header: 'Reg No', accessor: (a) => a.regNo, width: 12, defaultVisible: true },
+      { id: 'darsNameEn', header: 'Dars Name (English)', accessor: (a) => a.darsNameEn, width: 28, defaultVisible: true },
+      { id: 'darsNameMl', header: 'Dars Name (Malayalam)', accessor: (a) => a.darsNameMl || '', width: 28, defaultVisible: true },
+      { id: 'mudarris', header: 'Sadar Mudarris', accessor: (a) => a.mudarris, width: 22, defaultVisible: true },
+      { id: 'phone', header: 'Phone Number', accessor: (a) => a.phone, width: 16, defaultVisible: true, isPii: true },
+      { id: 'password', header: 'Portal Password', accessor: (a) => a.password, width: 16, defaultVisible: true, isPii: true },
+      { id: 'loginUrl', header: 'Portal URL', accessor: () => `${typeof window !== 'undefined' ? window.location.origin : 'https://alathurpadidars.in'}/dars`, width: 30, defaultVisible: true },
+    ],
+    []
+  );
+
+  const darsDirectoryColumns: ExportColumn<SuffaDars>[] = useMemo(
+    () => [
+      { id: 'regNo', header: 'Reg No', accessor: (d) => d.regNo, width: 12, defaultVisible: true },
+      { id: 'nameEn', header: 'Dars Name (English)', accessor: (d) => d.nameEn, width: 28, defaultVisible: true },
+      { id: 'nameMl', header: 'Dars Name (Malayalam)', accessor: (d) => d.nameMl, width: 28, defaultVisible: true },
+      { id: 'mudarris', header: 'Sadar Mudarris', accessor: (d) => d.mudarris, width: 22, defaultVisible: true },
+      { id: 'phone', header: 'Phone Number', accessor: (d) => d.phone || '', width: 16, defaultVisible: true, isPii: true },
+      { id: 'district', header: 'District', accessor: (d) => d.district || '', width: 16, defaultVisible: true },
+      { id: 'place', header: 'Location / Place', accessor: (d) => d.place || '', width: 20, defaultVisible: true },
+      { id: 'studentCount', header: 'Registered Students', accessor: (d) => studentCountsByDars[d.regNo] || 0, width: 14, defaultVisible: true },
+    ],
+    [studentCountsByDars]
+  );
+
+  const handleOpenAccountExport = () => {
+    openExport({
+      title: 'SUFFA Dars Coordinator Logins & Passwords',
+      filenamePrefix: 'UFUQ26_Dars_Logins',
+      data: filteredDarsAccounts,
+      columns: darsAccountColumns,
+      presets: [
+        {
+          id: 'full_credentials',
+          title: 'Full Credentials Workbook',
+          description: 'All 39 SUFFA centers with passwords and portal URLs',
+          format: 'xlsx',
+          visibleColumnIds: darsAccountColumns.map((c) => c.id),
+        },
+        {
+          id: 'whatsapp_distribution',
+          title: 'WhatsApp Distribution List',
+          description: 'Reg No, Mudarris, Phone, Login URL',
+          format: 'csv',
+          visibleColumnIds: ['regNo', 'darsNameEn', 'mudarris', 'phone', 'loginUrl'],
+        },
+        {
+          id: 'safe_public',
+          title: 'Public Redacted Roster',
+          description: 'Masks passwords and phone numbers',
+          format: 'xlsx',
+          maskPii: true,
+          visibleColumnIds: ['regNo', 'darsNameEn', 'darsNameMl', 'mudarris', 'phone', 'loginUrl'],
+        },
+      ],
+      defaultFormat: 'xlsx',
+    });
+  };
+
+  const handleQuickAccountExport = async (format: ExportFormat) => {
+    await executeExport(
+      {
+        title: 'SUFFA Dars Coordinator Logins & Passwords',
+        filenamePrefix: 'UFUQ26_Dars_Logins',
+        data: filteredDarsAccounts,
+        columns: darsAccountColumns,
+        defaultFormat: 'xlsx',
+      },
+      {
+        format,
+        scope: 'filtered',
+        visibleColumnIds: darsAccountColumns.map((c) => c.id),
+        maskPii: false,
+      }
+    );
+  };
+
+  const handleOpenDirectoryExport = () => {
+    openExport({
+      title: 'SUFFA Dars Institutional Directory',
+      filenamePrefix: 'UFUQ26_Dars_Directory',
+      data: filteredDars,
+      columns: darsDirectoryColumns,
+      presets: [
+        {
+          id: 'directory_full',
+          title: 'Complete Institutional Directory',
+          description: 'All 39 Dars centers with districts and registered delegate totals',
+          format: 'xlsx',
+          visibleColumnIds: darsDirectoryColumns.map((c) => c.id),
+        },
+        {
+          id: 'district_roster',
+          title: 'District Wise Roster',
+          description: 'Reg No, Dars Name, Mudarris, District, and Delegate Count',
+          format: 'csv',
+          visibleColumnIds: ['regNo', 'nameEn', 'mudarris', 'district', 'studentCount'],
+        },
+      ],
+      defaultFormat: 'xlsx',
+    });
+  };
+
+  const handleQuickDirectoryExport = async (format: ExportFormat) => {
+    await executeExport(
+      {
+        title: 'SUFFA Dars Institutional Directory',
+        filenamePrefix: 'UFUQ26_Dars_Directory',
+        data: filteredDars,
+        columns: darsDirectoryColumns,
+        defaultFormat: 'xlsx',
+      },
+      {
+        format,
+        scope: 'filtered',
+        visibleColumnIds: darsDirectoryColumns.map((c) => c.id),
+        maskPii: false,
+      }
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Subtab Pills */}
@@ -251,15 +402,12 @@ UFUQ '26 റസിഡൻസി ക്യാമ്പിലേക്ക് നി
                 <span>Seed 39 SUFFA Logins</span>
               </button>
 
-              <button
-                type="button"
-                onClick={exportDarsCredentialsCSV}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-panel bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-neutral-700 dark:text-neutral-300 text-xs font-semibold transition-colors shrink-0"
-                title="Export credentials list to CSV spreadsheet"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export CSV</span>
-              </button>
+              <ExportTriggerButton
+                label="Export Credentials"
+                count={filteredDarsAccounts.length}
+                onOpenModal={handleOpenAccountExport}
+                onQuickExport={handleQuickAccountExport}
+              />
 
               <button
                 type="button"
@@ -469,6 +617,13 @@ UFUQ '26 റസിഡൻസി ക്യാമ്പിലേക്ക് നി
             </div>
 
             <div className="flex items-center gap-2">
+              <ExportTriggerButton
+                label="Export Centers"
+                count={filteredDars.length}
+                onOpenModal={handleOpenDirectoryExport}
+                onQuickExport={handleQuickDirectoryExport}
+              />
+
               <button
                 type="button"
                 onClick={() => {
@@ -625,6 +780,15 @@ UFUQ '26 റസിഡൻസി ക്യാമ്പിലേക്ക് നി
         description={confirmDialog.description}
         onConfirm={confirmDialog.onConfirm}
         onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Universal Export Suite Modal */}
+      <UniversalExportModal
+        isOpen={isExportModalOpen}
+        onClose={closeExport}
+        config={exportModalConfig}
+        onExecute={runExport}
+        isExporting={isExporting}
       />
     </div>
   );

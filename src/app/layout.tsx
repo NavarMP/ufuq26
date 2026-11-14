@@ -14,6 +14,8 @@ import SettingsModal from '@/components/settings/SettingsModal';
 import { ReminderProvider } from '@/context/ReminderContext';
 import ReminderModal from '@/components/reminders/ReminderModal';
 import ReminderCenterDrawer from '@/components/reminders/ReminderCenterDrawer';
+import { NotificationProvider } from '@/context/NotificationContext';
+import NotificationCenterDrawer from '@/components/notifications/NotificationCenterDrawer';
 import { Toaster } from 'react-hot-toast';
 
 export const metadata: Metadata = {
@@ -49,9 +51,9 @@ export const metadata: Metadata = {
         type: 'image/png',
       },
       {
-        url: '/images/UFUQ-Logo.svg',
-        width: 800,
-        height: 800,
+        url: '/images/UFUQ-Logo-app.svg',
+        width: 1080,
+        height: 1080,
         alt: 'UFUQ ’26 Emblem',
       },
     ],
@@ -67,8 +69,8 @@ export const metadata: Metadata = {
     site: '@alathoorpadidars',
   },
   icons: {
-    icon: '/images/UFUQ-Logo.svg',
-    apple: '/images/UFUQ-Logo.svg',
+    icon: '/images/UFUQ-Logo-app.svg',
+    apple: '/images/UFUQ-Logo-app.svg',
   },
 };
 
@@ -119,7 +121,7 @@ export default function RootLayout({
                 '@type': 'Organization',
                 name: 'Alathurpadi Dars Students Association (ADSA)',
                 url: 'https://alathurpadidars.in',
-                logo: 'https://alathurpadidars.in/images/UFUQ-Logo.svg',
+                logo: 'https://alathurpadidars.in/images/UFUQ-Logo-app.svg',
               },
               offers: {
                 '@type': 'Offer',
@@ -147,14 +149,16 @@ export default function RootLayout({
                 <AudioProvider>
                   <ReminderProvider>
                     <PreferencesProvider>
-                      <SmoothScrollProvider>
-                        <CustomCursor />
-                        <CustomScrollbar />
-                        <OfflineBanner />
-                        <SettingsModal />
-                        <ReminderModal />
-                        <ReminderCenterDrawer />
-                        <Toaster
+                      <NotificationProvider>
+                        <SmoothScrollProvider>
+                          <CustomCursor />
+                          <CustomScrollbar />
+                          <OfflineBanner />
+                          <SettingsModal />
+                          <ReminderModal />
+                          <ReminderCenterDrawer />
+                          <NotificationCenterDrawer />
+                          <Toaster
                           position="bottom-center"
                           toastOptions={{
                             style: {
@@ -168,7 +172,8 @@ export default function RootLayout({
                         />
                         {children}
                       </SmoothScrollProvider>
-                    </PreferencesProvider>
+                    </NotificationProvider>
+                  </PreferencesProvider>
                   </ReminderProvider>
                 </AudioProvider>
               </DarsAuthProvider>

@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import BrandLogo from '@/components/BrandLogo';
 import { useEvent } from '@/context/EventContext';
 import { useApp } from '@/context/AppContext';
 import { resolveLocalized } from '@/lib/translations';
@@ -37,10 +38,8 @@ export default function Footer() {
           {/* Brand & Socials Column */}
           <div className="md:col-span-4 space-y-4 text-left rtl:text-right">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-brand-navy p-2 flex items-center justify-center border border-brand-gold/30">
-                <Image
-                  src="/images/UFUQ-Logo.svg"
-                  alt="UFUQ '26"
+              <div className="w-10 h-10 rounded-2xl bg-[var(--logo-tile)] p-2 flex items-center justify-center border border-brand-gold/30">
+                <BrandLogo
                   width={30}
                   height={30}
                   className="object-contain"
@@ -153,7 +152,7 @@ export default function Footer() {
                 <li>
                   <Link href="/about" className="text-neutral-600 dark:text-neutral-300 hover:text-brand-gold font-semibold transition-colors flex items-center gap-1">
                     <span>{t('nav.about')}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-brand-gold/20 text-brand-gold">Dedicated</span>
+                    {/* <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-brand-gold/20 text-brand-gold">Dedicated</span> */}
                   </Link>
                 </li>
                 <li>

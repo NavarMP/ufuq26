@@ -47,6 +47,10 @@ export function calculateNotificationTime(targetIso: string, preset: ReminderTim
       const d = new Date(targetDate.getTime() - 2 * 60 * 60 * 1000);
       return d.toISOString();
     }
+    case '1_hour_before': {
+      const d = new Date(targetDate.getTime() - 1 * 60 * 60 * 1000);
+      return d.toISOString();
+    }
     case '30_min_before': {
       const d = new Date(targetDate.getTime() - 30 * 60 * 1000);
       return d.toISOString();

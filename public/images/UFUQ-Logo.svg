@@ -3,7 +3,7 @@
   <defs>
     <style>
       .cls-1 {
-        fill: #c9a45c;
+        fill: #8f6b2c;
       }
 
       .cls-2 {
@@ -13,12 +13,22 @@
       .cls-3 {
         fill: #527a70;
       }
+
+      @media (prefers-color-scheme: dark) {
+        .cls-1 {
+          fill: #c9a45c;
+        }
+
+        .cls-2 {
+          fill: #f5f0e8;
+        }
+      }
     </style>
   </defs>
-  <rect class="cls-2" x="272.5" y="272.5" width="535" height="76.43"/>
-  <path class="cls-2" d="M616.43,387.14v191.08h114.65v152.85h-152.86v-114.64h-191.07v114.64h-38.22v-267.5h114.65v-76.43h-191.08v420.36h535v-420.36h-191.07ZM501.79,731.07h-38.21v-38.21h38.21v38.21ZM731.08,501.79h-38.22v-38.22h38.22v38.22Z"/>
-  <rect class="cls-3" x="501.79" y="387.14" width="76.43" height="76.43"/>
-  <rect class="cls-3" x="501.79" y="501.79" width="76.43" height="76.43"/>
-  <rect class="cls-3" x="387.15" y="501.79" width="76.43" height="76.43"/>
-  <rect class="cls-1" x="616.43" y="616.43" width="76.43" height="76.43"/>
+  <rect class="cls-2" x="663.91" y="110.37" width="76.43" height="535" transform="translate(-61.55 607.16) rotate(-45)"/>
+  <path class="cls-2" d="M702.13,485.96l-135.11,135.11,81.07,81.07-108.08,108.08-108.09-108.09,81.06-81.06-135.11-135.11-81.06,81.06-27.03-27.03,189.15-189.15,81.07,81.07,54.04-54.04-135.11-135.11-297.24,297.24,378.3,378.3,297.24-297.24-135.11-135.11ZM377.87,648.09l-27.02-27.02,27.02-27.02,27.02,27.02-27.02,27.02ZM702.13,648.1l-27.03-27.03,27.03-27.03,27.03,27.03-27.03,27.03Z"/>
+  <rect class="cls-3" x="582.85" y="420.72" width="76.43" height="76.43" transform="translate(-142.61 573.58) rotate(-45)"/>
+  <rect class="cls-3" x="501.79" y="501.79" width="76.43" height="76.43" transform="translate(-223.68 540) rotate(-45)"/>
+  <rect class="cls-3" x="420.72" y="420.73" width="76.43" height="76.43" transform="translate(-190.1 458.94) rotate(-45)"/>
+  <rect class="cls-1" x="501.79" y="663.92" width="76.43" height="76.43" transform="translate(-338.32 587.49) rotate(-45)"/>
 </svg>

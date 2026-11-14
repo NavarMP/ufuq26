@@ -99,6 +99,11 @@
   --brand-gold-hover: #b8924b;
   --brand-gold-light: #ecdcb9;
   --brand-gold-rgb: 201, 164, 92;
+
+  --logo-ink: #101d32;
+  --logo-teal: #527a70;
+  --logo-gold: #8f6b2c;
+  --logo-tile: #fbf9f5;
 }
 
 .dark {
@@ -115,6 +120,17 @@
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
   --border-gold: rgba(201, 164, 92, 0.35);
+
+  --logo-ink: #f5f0e8;
+  --logo-teal: #527a70;
+  --logo-gold: #c9a45c;
+  --logo-tile: #101d32;
+}
+
+.brand-logo-inverse {
+  --logo-ink: #f5f0e8;
+  --logo-teal: #527a70;
+  --logo-gold: #c9a45c;
 }
 
 html {

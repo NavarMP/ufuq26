@@ -199,7 +199,7 @@ export default function AboutSection() {
               <span>Full Historical Chronicle & Ecosystem</span>
             </div>
             <h3 className="font-clash text-2xl sm:text-3xl font-extrabold text-brand-navy dark:text-white">
-              Explore the Dedicated About Experience
+              Explore the About Experience
             </h3>
             <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-300 leading-relaxed">
               Immerse yourself in the comprehensive history of Alathurpadi Dars, the guidance of our revered Ustads, the fraternities of ADSA and SUFFA, the sacred philosophy of <strong className="text-brand-gold">SUHBA (صُحْبَة)</strong>, and the searchable directory of all <strong>39+ SUFFA Dars institutions</strong>.
@@ -211,7 +211,7 @@ export default function AboutSection() {
               href="/about"
               className="inline-flex items-center gap-2.5 px-7 py-3.5 rounded-full bg-brand-gold hover:bg-brand-gold-hover text-brand-navy font-bold text-sm shadow-xl shadow-brand-gold/25 hover:scale-105 active:scale-95 transition-all duration-200"
             >
-              <span>Explore Dedicated Page</span>
+              <span>Explore More</span>
               <ArrowRight className={`w-4 h-4 ${isRtl ? 'rotate-180' : ''}`} />
             </Link>
           </div>

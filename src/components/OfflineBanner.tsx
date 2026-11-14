@@ -25,16 +25,44 @@ export default function OfflineBanner() {
     }
   }, [isOnline, wasOffline]);
 
-  // PWA beforeinstallprompt capture
+  // PWA beforeinstallprompt capture & installed detection
   useEffect(() => {
+    // Check if app is already running in standalone/installed mode
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true ||
+      document.referrer.includes('android-app://');
+
+    if (isStandalone) {
+      setShowInstallPill(false);
+      return;
+    }
+
     const handleBeforeInstall = (e: any) => {
+      // Don't show if already in standalone mode
+      if (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true
+      ) {
+        return;
+      }
       e.preventDefault();
       setInstallPrompt(e);
       setShowInstallPill(true);
     };
 
+    const handleAppInstalled = () => {
+      setShowInstallPill(false);
+      setInstallPrompt(null);
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
   const handleInstallClick = async () => {

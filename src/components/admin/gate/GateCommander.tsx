@@ -25,6 +25,17 @@ import {
   Clock,
   ArrowRightLeft,
 } from 'lucide-react';
+import { useExport } from '@/hooks/useExport';
+import UniversalExportModal from '@/components/export/UniversalExportModal';
+import ExportTriggerButton from '@/components/export/ExportTriggerButton';
+import {
+  ExportColumn,
+  ExportPreset,
+  UniversalExportConfig,
+  ExportFormat,
+  executeExport,
+} from '@/lib/export';
+import { GateScanLog } from '@/types';
 
 interface GateCommanderProps {
   registrations: Registration[];
@@ -36,6 +47,86 @@ export default function GateCommander({ registrations, darsList }: GateCommander
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [selectedBadgeReg, setSelectedBadgeReg] = useState<Registration | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const {
+    isOpen: isExportModalOpen,
+    activeConfig: exportModalConfig,
+    isExporting,
+    openExport,
+    closeExport,
+    runExport,
+  } = useExport<GateScanLog>();
+
+  const gateLogColumns: ExportColumn<GateScanLog>[] = [
+    { id: 'id', header: 'Scan ID', accessor: (l) => l.id, width: 14, defaultVisible: false },
+    { id: 'regCode', header: 'Reg Code', accessor: (l) => l.regCode, width: 14, defaultVisible: true },
+    { id: 'attendeeName', header: 'Attendee Name', accessor: (l) => l.attendeeName, width: 25, defaultVisible: true },
+    { id: 'darsRegNo', header: 'Dars Reg No', accessor: (l) => l.darsRegNo || '—', width: 12, defaultVisible: true },
+    { id: 'darsName', header: 'Dars Center', accessor: (l) => l.darsName || '—', width: 26, defaultVisible: true },
+    { id: 'category', header: 'Category', accessor: (l) => l.category, width: 14, defaultVisible: true },
+    { id: 'checkpoint', header: 'Checkpoint', accessor: (l) => l.checkpoint.replace(/_/g, ' ').toUpperCase(), width: 14, defaultVisible: true },
+    { id: 'direction', header: 'Direction', accessor: (l) => l.direction.toUpperCase(), width: 10, defaultVisible: true },
+    { id: 'resultStatus', header: 'Result Status', accessor: (l) => l.resultStatus.toUpperCase(), width: 12, defaultVisible: true },
+    { id: 'action', header: 'Action', accessor: (l) => l.action.replace(/_/g, ' '), width: 16, defaultVisible: true },
+    { id: 'message', header: 'Log Note', accessor: (l) => l.message || '', width: 25, defaultVisible: false },
+    { id: 'scannedAt', header: 'Scan Time', accessor: (l) => new Date(l.scannedAt).toLocaleString('en-IN'), width: 22, defaultVisible: true },
+    { id: 'scannedByName', header: 'Operator', accessor: (l) => l.scannedByName || 'Desk', width: 16, defaultVisible: true },
+    { id: 'sessionContext', header: 'Meal / Context', accessor: (l) => l.sessionContext || '—', width: 14, defaultVisible: true },
+  ];
+
+  const gateLogPresets: ExportPreset<GateScanLog>[] = [
+    {
+      id: 'full_audit',
+      title: 'Full Audit Trail',
+      description: 'Comprehensive gate access logs with all checkpoints in Excel',
+      format: 'xlsx',
+      visibleColumnIds: gateLogColumns.map((c) => c.id),
+    },
+    {
+      id: 'dining_manifest',
+      title: 'Dining Hall Meal Claims',
+      description: 'Breakdown of breakfast, lunch, and dinner redemptions',
+      format: 'csv',
+      visibleColumnIds: ['regCode', 'attendeeName', 'darsRegNo', 'darsName', 'checkpoint', 'action', 'sessionContext', 'scannedAt'],
+    },
+    {
+      id: 'main_gate_manifest',
+      title: 'Main Gate Check-in Logs',
+      description: 'Attendee arrival and departure timestamps',
+      format: 'csv',
+      visibleColumnIds: ['regCode', 'attendeeName', 'darsRegNo', 'checkpoint', 'direction', 'resultStatus', 'scannedAt', 'scannedByName'],
+    },
+  ];
+
+  const handleOpenExportModal = () => {
+    openExport({
+      title: "UFUQ ’26 Gate & Security Operations Log",
+      filenamePrefix: 'UFUQ26_Gate_Logs',
+      data: scanLogs,
+      columns: gateLogColumns,
+      presets: gateLogPresets,
+      defaultFormat: 'csv',
+    });
+  };
+
+  const handleQuickExport = async (format: ExportFormat) => {
+    await executeExport(
+      {
+        title: "UFUQ ’26 Gate & Security Operations Log",
+        filenamePrefix: 'UFUQ26_Gate_Logs',
+        data: scanLogs,
+        columns: gateLogColumns,
+        presets: gateLogPresets,
+        defaultFormat: 'csv',
+      },
+      {
+        format,
+        scope: 'filtered',
+        visibleColumnIds: gateLogColumns.filter((c) => c.defaultVisible !== false).map((c) => c.id),
+        maskPii: false,
+      }
+    );
+  };
 
   const activeMeal = getActiveMealSlot();
 
@@ -73,14 +164,13 @@ export default function GateCommander({ registrations, darsList }: GateCommander
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={exportGateLogsCSV}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl glass-panel text-xs font-semibold text-neutral-200 hover:border-brand-gold transition-colors"
-          >
-            <Download className="w-4 h-4 text-brand-gold" />
-            <span>Export CSV</span>
-          </button>
+          <ExportTriggerButton
+            label="Export Logs"
+            count={scanLogs.length}
+            onOpenModal={handleOpenExportModal}
+            onQuickExport={handleQuickExport}
+            variant="glass"
+          />
 
           <button
             type="button"
@@ -428,6 +518,15 @@ export default function GateCommander({ registrations, darsList }: GateCommander
           </div>
         </div>
       )}
+
+      {/* Universal Export Suite Modal for Gate Scan Logs */}
+      <UniversalExportModal
+        isOpen={isExportModalOpen}
+        onClose={closeExport}
+        config={exportModalConfig}
+        onExecute={runExport}
+        isExporting={isExporting}
+      />
     </div>
   );
 }

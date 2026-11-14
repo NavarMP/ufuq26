@@ -12,8 +12,9 @@ export async function renderPosterToCanvas(
   format: StoryFormat = 'story'
 ): Promise<void> {
   const isStory = format === 'story';
-  const width = isStory ? 1080 : 1200;
-  const height = isStory ? 1920 : 630;
+  const isSquare = format === 'square';
+  const width = isStory || isSquare ? 1080 : 1200;
+  const height = isStory ? 1920 : isSquare ? 1080 : 630;
 
   canvas.width = width;
   canvas.height = height;
@@ -24,7 +25,7 @@ export async function renderPosterToCanvas(
   // 1. Rich Deep Midnight Navy Gradient Background
   const bgGrad = ctx.createRadialGradient(
     width * 0.5,
-    height * (isStory ? 0.35 : 0.4),
+    height * (isStory ? 0.35 : isSquare ? 0.4 : 0.4),
     width * 0.1,
     width * 0.5,
     height * 0.5,
@@ -100,7 +101,7 @@ export async function renderPosterToCanvas(
   ctx.textAlign = 'center';
 
   // Sub-badge: Organizers
-  const topTextY = isStory ? 150 : 80;
+  const topTextY = isStory ? 150 : isSquare ? 110 : 80;
   ctx.font = '600 24px system-ui, -apple-system, sans-serif';
   ctx.fillStyle = '#c9a45c';
   ctx.letterSpacing = '3px';
@@ -115,7 +116,7 @@ export async function renderPosterToCanvas(
   // 5. Arabic Calligraphy: أُفُق
   ctx.save();
   ctx.textAlign = 'center';
-  const arabicY = isStory ? 350 : 170;
+  const arabicY = isStory ? 350 : isSquare ? 260 : 170;
   ctx.font = 'bold 96px "DG Sahabah", "Traditional Arabic", "Amiri", serif';
   ctx.fillStyle = '#f5ad1f'; // Warm gold
   ctx.shadowColor = 'rgba(245, 173, 31, 0.4)';
@@ -126,7 +127,7 @@ export async function renderPosterToCanvas(
   // 6. Title: UFUQ ’26
   ctx.save();
   ctx.textAlign = 'center';
-  const englishTitleY = isStory ? 470 : 250;
+  const englishTitleY = isStory ? 470 : isSquare ? 360 : 250;
   ctx.font = '800 84px "Clash Display", -apple-system, system-ui, sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
@@ -134,7 +135,7 @@ export async function renderPosterToCanvas(
   ctx.fillText('UFUQ ’26', width * 0.5, englishTitleY);
 
   // Subtitle
-  const descY = isStory ? 540 : 298;
+  const descY = isStory ? 540 : isSquare ? 420 : 298;
   ctx.font = '600 32px system-ui, -apple-system, sans-serif';
   ctx.fillStyle = '#c9a45c';
   ctx.fillText('A Transition & Leadership Camp', width * 0.5, descY);
@@ -356,11 +357,23 @@ export async function renderPosterToCanvas(
       ctx.strokeStyle = '#c9a45c';
       ctx.stroke();
 
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillStyle = '#c9a45c';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('أُفُق', logoCenter, logoCenterY);
+      try {
+        const logo = await loadImage('/images/UFUQ-Logo-dark.svg');
+        const logoInset = 9;
+        ctx.drawImage(
+          logo,
+          logoCenter - logoBadgeSize / 2 + logoInset,
+          logoCenterY - logoBadgeSize / 2 + logoInset,
+          logoBadgeSize - logoInset * 2,
+          logoBadgeSize - logoInset * 2
+        );
+      } catch {
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillStyle = '#c9a45c';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('أُفُق', logoCenter, logoCenterY);
+      }
       ctx.restore();
     } catch {
       // Fallback if QR generator fails

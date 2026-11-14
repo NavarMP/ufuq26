@@ -13,11 +13,13 @@ import AdminLoginGate from '@/components/admin/auth/AdminLoginGate';
 // Domain Tab Managers
 import DashboardOverview from '@/components/admin/dashboard/DashboardOverview';
 import RegistrationsManager from '@/components/admin/registrations/RegistrationsManager';
+import NotificationManager from '@/components/admin/notifications/NotificationManager';
 import DarsManager from '@/components/admin/dars/DarsManager';
 import GateCommander from '@/components/admin/gate/GateCommander';
 import SessionsManager from '@/components/admin/sessions/SessionsManager';
 import GuestsManager from '@/components/admin/guests/GuestsManager';
 import FaqsManager from '@/components/admin/faqs/FaqsManager';
+import GalleryManager from '@/components/admin/gallery/GalleryManager';
 import AudioManager from '@/components/admin/audio/AudioManager';
 import SettingsManager from '@/components/admin/settings/SettingsManager';
 
@@ -29,6 +31,13 @@ export default function AdminPage() {
     faqs,
     registrations,
     audioTracks,
+    galleryItems,
+    addGalleryItem,
+    updateGalleryItem,
+    deleteGalleryItem,
+    bulkUpdateGalleryItems,
+    bulkDeleteGalleryItems,
+    reorderGalleryItems,
     darsList,
     addDars,
     updateDars,
@@ -107,6 +116,7 @@ export default function AdminPage() {
         guests: guests.length,
         faqs: faqs.length,
         audioTracks: audioTracks.length,
+        galleryItems: galleryItems.length,
       }}
       sessions={schedule}
       guests={guests}
@@ -152,6 +162,14 @@ export default function AdminPage() {
           registrations={registrations}
           darsList={darsList}
           onRefresh={fetchRegistrations}
+        />
+      )}
+
+      {/* TAB: COMMS & BROADCASTS HUB */}
+      {activeTab === 'notifications' && (
+        <NotificationManager
+          registrations={registrations}
+          darsList={darsList}
         />
       )}
 
@@ -211,7 +229,20 @@ export default function AdminPage() {
         />
       )}
 
-      {/* TAB 7: BACKGROUND AUDIO STUDIO */}
+      {/* TAB 7: GALLERY SHOWCASE CRUD */}
+      {activeTab === 'gallery' && (
+        <GalleryManager
+          galleryItems={galleryItems}
+          addGalleryItem={addGalleryItem}
+          updateGalleryItem={updateGalleryItem}
+          deleteGalleryItem={deleteGalleryItem}
+          bulkUpdateGalleryItems={bulkUpdateGalleryItems}
+          bulkDeleteGalleryItems={bulkDeleteGalleryItems}
+          reorderGalleryItems={reorderGalleryItems}
+        />
+      )}
+
+      {/* TAB 8: BACKGROUND AUDIO STUDIO */}
       {activeTab === 'audio' && (
         <AudioManager
           audioTracks={audioTracks}

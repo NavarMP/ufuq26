@@ -7,6 +7,12 @@ import { useReminders } from '@/context/ReminderContext';
 import { resolveLocalized } from '@/lib/translations';
 import { CalendarEvent } from '@/lib/calendar/calendarGenerator';
 import { ScheduleSession } from '@/types';
+import { useExport } from '@/hooks/useExport';
+import UniversalExportModal from '@/components/export/UniversalExportModal';
+import ExportTriggerButton from '@/components/export/ExportTriggerButton';
+import { ExportColumn, ExportPreset, ExportFormat, executeExport } from '@/lib/export';
+import { formatSessionsToIcs } from '@/lib/export/formatters/icsFormatter';
+import { createTextBlob, triggerBlobDownload } from '@/lib/export/utils/downloadHelper';
 import MonthGrid from './MonthGrid';
 import CampWeekMatrix from './CampWeekMatrix';
 import DayInspectorModal from './DayInspectorModal';
@@ -32,7 +38,7 @@ export default function CampCalendarView() {
   const { language, t, isRtl } = useApp();
   const { openReminderModal } = useReminders();
 
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
+  const [viewMode, setViewMode] = useState<CalendarViewMode>('agenda');
   const [showHijri, setShowHijri] = useState(true);
   const [selectedDay, setSelectedDay] = useState<number | 'all'>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -98,6 +104,103 @@ export default function CampCalendarView() {
     return matchesDay && matchesCategory;
   });
 
+  const {
+    isOpen: isExportModalOpen,
+    activeConfig: exportModalConfig,
+    isExporting,
+    openExport,
+    closeExport,
+    runExport,
+  } = useExport<ScheduleSession>();
+
+  const sessionColumns: ExportColumn<ScheduleSession>[] = React.useMemo(
+    () => [
+      { id: 'day', header: 'Camp Day', accessor: (s) => `Day ${s.day}`, width: 10, defaultVisible: true },
+      { id: 'date', header: 'Date', accessor: (s) => s.date, width: 12, defaultVisible: true },
+      { id: 'startTime', header: 'Start Time', accessor: (s) => s.startTime, width: 10, defaultVisible: true },
+      { id: 'endTime', header: 'End Time', accessor: (s) => s.endTime, width: 10, defaultVisible: true },
+      { id: 'title', header: 'Title', accessor: (s) => resolveLocalized(s.title, language), width: 30, defaultVisible: true },
+      { id: 'category', header: 'Track / Category', accessor: (s) => s.category || 'General', width: 16, defaultVisible: true },
+      { id: 'speaker', header: 'Speaker / Scholar', accessor: (s) => s.speaker || '—', width: 22, defaultVisible: true },
+      { id: 'location', header: 'Venue / Hall', accessor: (s) => s.location || 'Alathurpadi Campus', width: 20, defaultVisible: true },
+      { id: 'description', header: 'Overview', accessor: (s) => (s.description ? resolveLocalized(s.description, language) : ''), width: 35, defaultVisible: false },
+    ],
+    [language]
+  );
+
+  const handleOpenExportModal = () => {
+    openExport({
+      title: selectedDay === 'all' ? "UFUQ ’26 Horizon Camp Schedule" : `UFUQ ’26 Day ${selectedDay} Schedule`,
+      filenamePrefix: `UFUQ26_Timetable_${selectedDay === 'all' ? 'All_Days' : `Day_${selectedDay}`}`,
+      data: filteredSessions,
+      columns: sessionColumns,
+      presets: [
+        {
+          id: 'calendar_ics',
+          title: 'Add to Calendar (.ics)',
+          description: 'Multi-session iCalendar file for Google, Apple, and Outlook Calendar',
+          format: 'ics',
+          visibleColumnIds: sessionColumns.map((c) => c.id),
+        },
+        {
+          id: 'excel_sheet',
+          title: 'Excel Timetable (.xls)',
+          description: 'Formatted timetable with timings, speakers, and venue details',
+          format: 'xlsx',
+          visibleColumnIds: sessionColumns.map((c) => c.id),
+        },
+        {
+          id: 'csv_data',
+          title: 'CSV Schedule',
+          description: 'Universal spreadsheet format',
+          format: 'csv',
+          visibleColumnIds: ['day', 'startTime', 'endTime', 'title', 'category', 'speaker', 'location'],
+        },
+      ],
+      defaultFormat: 'ics',
+    });
+  };
+
+  const handleQuickExport = async (format: ExportFormat) => {
+    if (format === 'ics') {
+      const calendarItems = filteredSessions.map((s) => ({
+        id: s.id,
+        title: resolveLocalized(s.title, language),
+        description: s.description ? resolveLocalized(s.description, language) : `UFUQ ’26 - Day ${s.day} Session`,
+        location: s.location || 'Alathurpadi Dars Campus, Malappuram',
+        startDate: `${s.date}T${s.startTime}:00+05:30`,
+        endDate: `${s.date}T${s.endTime}:00+05:30`,
+        category: s.category,
+        url: 'https://alathurpadidars.in#schedule',
+      }));
+
+      const icsContent = formatSessionsToIcs(
+        calendarItems,
+        selectedDay === 'all' ? "UFUQ ’26 Full Horizon Schedule" : `UFUQ ’26 Day ${selectedDay} Schedule`
+      );
+      const blob = createTextBlob(icsContent, 'text/calendar', false);
+      const filename = `UFUQ26_Schedule_${selectedDay === 'all' ? 'All_Days' : `Day_${selectedDay}`}.ics`;
+      triggerBlobDownload(blob, filename);
+      return;
+    }
+
+    await executeExport(
+      {
+        title: selectedDay === 'all' ? "UFUQ ’26 Horizon Camp Schedule" : `UFUQ ’26 Day ${selectedDay} Schedule`,
+        filenamePrefix: `UFUQ26_Timetable_${selectedDay === 'all' ? 'All_Days' : `Day_${selectedDay}`}`,
+        data: filteredSessions,
+        columns: sessionColumns,
+        defaultFormat: 'xlsx',
+      },
+      {
+        format,
+        scope: 'filtered',
+        visibleColumnIds: sessionColumns.filter((c) => c.defaultVisible !== false).map((c) => c.id),
+        maskPii: false,
+      }
+    );
+  };
+
   const convertSessionToCalendarEvent = (session: ScheduleSession): CalendarEvent => {
     const title = resolveLocalized(session.title, language);
     const desc = resolveLocalized(session.description, language);
@@ -154,16 +257,16 @@ export default function CampCalendarView() {
         >
           <button
             role="tab"
-            aria-selected={viewMode === 'month'}
-            onClick={() => handleViewChange('month')}
+            aria-selected={viewMode === 'agenda'}
+            onClick={() => handleViewChange('agenda')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              viewMode === 'month'
+              viewMode === 'agenda'
                 ? 'bg-brand-navy dark:bg-brand-gold text-white dark:text-brand-navy shadow-md font-bold'
                 : 'text-neutral-600 dark:text-neutral-300 hover:text-brand-gold'
             }`}
           >
-            <CalendarIcon className="w-3.5 h-3.5" />
-            <span>Month Grid</span>
+            <ListFilter className="w-3.5 h-3.5" />
+            <span>{t('schedule.sessionTimeline') || 'Session Timeline'}</span>
           </button>
 
           <button
@@ -177,26 +280,34 @@ export default function CampCalendarView() {
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
-            <span>7-Day Matrix</span>
+            <span>{t('schedule.weekMatrix') || '7-Day Matrix'}</span>
           </button>
 
           <button
             role="tab"
-            aria-selected={viewMode === 'agenda'}
-            onClick={() => handleViewChange('agenda')}
+            aria-selected={viewMode === 'month'}
+            onClick={() => handleViewChange('month')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              viewMode === 'agenda'
+              viewMode === 'month'
                 ? 'bg-brand-navy dark:bg-brand-gold text-white dark:text-brand-navy shadow-md font-bold'
                 : 'text-neutral-600 dark:text-neutral-300 hover:text-brand-gold'
             }`}
           >
-            <ListFilter className="w-3.5 h-3.5" />
-            <span>Session Timeline</span>
+            <CalendarIcon className="w-3.5 h-3.5" />
+            <span>{t('schedule.monthGrid') || 'Month Grid'}</span>
           </button>
         </div>
 
-        {/* Global Add Full Camp & Reminder Shortcut */}
+        {/* Global Add Full Camp & Reminder Shortcut & Export */}
         <div className="flex items-center gap-2 self-end sm:self-center pr-2">
+          <ExportTriggerButton
+            label="Export Schedule"
+            count={filteredSessions.length}
+            onOpenModal={handleOpenExportModal}
+            onQuickExport={handleQuickExport}
+            variant="glass"
+          />
+
           <button
             onClick={handleAddFullCampToCalendar}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-brand-gold hover:bg-brand-gold-hover text-brand-navy shadow-sm transition-all"
@@ -411,6 +522,15 @@ export default function CampCalendarView() {
           event={activeCalendarEvent}
         />
       )}
+
+      {/* Universal Export Suite Modal */}
+      <UniversalExportModal
+        isOpen={isExportModalOpen}
+        onClose={closeExport}
+        config={exportModalConfig}
+        onExecute={runExport}
+        isExporting={isExporting}
+      />
     </div>
   );
 }

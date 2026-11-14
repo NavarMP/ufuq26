@@ -1,0 +1,26 @@
+name: UFUQ '26 Scheduled Notification Cron
+
+on:
+  schedule:
+    # Runs daily at 03:00 UTC (08:30 AM Indian Standard Time)
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions dashboard
+
+jobs:
+  evaluate_and_dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run Milestone Dispatcher
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NEXT_PUBLIC_RESEND_API_KEY: ${{ secrets.NEXT_PUBLIC_RESEND_API_KEY }}
+          NEXT_PUBLIC_BASE_URL: https://alathurpadidars.in
+        run: node scripts/dispatch-scheduled-cron.mjs

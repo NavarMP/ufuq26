@@ -205,6 +205,18 @@ export default function StoryCardGenerator({ className = '', initialTheme }: Sto
           <button
             type="button"
             onClick={() => {
+              setSelectedFormat('square');
+              playTick();
+            }}
+            className={`px-2.5 py-0.5 rounded-lg text-[11px] font-medium transition-colors ${
+              selectedFormat === 'square' ? 'bg-brand-navy text-brand-gold font-bold shadow-sm' : 'text-neutral-500'
+            }`}
+          >
+            1:1 Square
+          </button>
+          <button
+            type="button"
+            onClick={() => {
               setSelectedFormat('feed');
               playTick();
             }}
