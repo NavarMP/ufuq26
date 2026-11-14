@@ -1,0 +1,139 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "schedule": "Schedule",
+    "guests": "Guests",
+    "register": "Register",
+    "faq": "FAQ",
+    "contact": "Contact",
+    "search": "Search",
+    "admin": "Admin"
+  },
+  "hero": {
+    "arabicTitle": "أُفُق",
+    "title": "UFUQ '26",
+    "descriptor": "A Transition & Leadership Camp",
+    "tagline": "Rooted in Ilm. Ready for the World.",
+    "dates": "December 24–30, 2026",
+    "registerNow": "Register Now",
+    "learnMore": "Learn More",
+    "daysLeft": "days until camp",
+    "campStarted": "Camp is underway!",
+    "campEnded": "Camp has concluded"
+  },
+  "about": {
+    "title": "About",
+    "campTitle": "About UFUQ '26",
+    "campDescription": "UFUQ '26 is a week-long transition and leadership camp designed for students from SUFFA Dars who are moving on to pursue higher studies. The camp equips graduating students with the confidence, skills, and mindset to navigate the transition from traditional Islamic learning to higher education and professional life — while staying rooted in their values and knowledge.",
+    "adsaTitle": "Alathurpadi Dars Students Association (ADSA)",
+    "adsaDescription": "Alathurpadi Dars Students Association (ADSA) is a community organization supporting the students and alumni of Alathurpadi Dars — one of the historic centers of traditional Islamic learning in Kerala, India. ADSA organizes programs and initiatives to help students grow academically, professionally, and socially.",
+    "suffaTitle": "SUFFA Dars",
+    "suffaDescription": "SUFFA (Scholars Union For Fundamental Activities) is the active students' body of Alathurpadi Dars. It organizes academic programs, community engagement activities, and student development initiatives throughout the academic year.",
+    "organizedBy": "Organized by"
+  },
+  "schedule": {
+    "title": "Schedule",
+    "subtitle": "Seven days of transformation",
+    "day": "Day",
+    "allDays": "All Days",
+    "noSessions": "Sessions will be announced soon.",
+    "sampleLabel": "[Sample — Confirmed sessions will be updated]",
+    "filterByCategory": "Filter by category",
+    "addToCalendar": "Add to Calendar",
+    "setReminder": "Set Reminder",
+    "reminderSet": "Reminder set!"
+  },
+  "guests": {
+    "title": "Guests & Speakers",
+    "subtitle": "Learn from those who've walked the path",
+    "noGuests": "Guest speakers will be announced soon.",
+    "sampleLabel": "[Sample — Confirmed guests will be updated]"
+  },
+  "register": {
+    "title": "Register",
+    "subtitle": "Secure your place at UFUQ '26",
+    "fullName": "Full Name",
+    "email": "Email Address",
+    "phone": "Phone Number",
+    "darsYear": "Year of Study at Dars",
+    "institution": "Current Institution",
+    "higherStudyPlan": "Higher Study Plans",
+    "dietary": "Dietary Requirements",
+    "emergencyContact": "Emergency Contact Name",
+    "emergencyPhone": "Emergency Contact Phone",
+    "agreeTerms": "I agree to the camp guidelines and terms",
+    "submit": "Submit Registration",
+    "submitting": "Submitting...",
+    "success": "Registration submitted successfully!",
+    "successMessage": "Thank you for registering for UFUQ '26. You will receive a confirmation email shortly.",
+    "error": "Registration failed. Please try again.",
+    "duplicate": "A registration with this email already exists.",
+    "closed": "Registration is currently closed.",
+    "required": "This field is required",
+    "invalidEmail": "Please enter a valid email address",
+    "invalidPhone": "Please enter a valid phone number",
+    "mustAgree": "You must agree to the terms"
+  },
+  "faq": {
+    "title": "Frequently Asked Questions",
+    "subtitle": "Everything you need to know",
+    "noFaqs": "FAQs will be added soon.",
+    "contactUs": "Still have questions? Contact us"
+  },
+  "contact": {
+    "title": "Contact & Support",
+    "subtitle": "We're here to help",
+    "getInTouch": "Get in Touch",
+    "followUs": "Follow Us",
+    "location": "Location",
+    "directions": "Get Directions",
+    "viewOnMap": "View on Map"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "language": {
+    "en": "English",
+    "ml": "Malayalam",
+    "ar": "العربية"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try again",
+    "offline": "You are offline",
+    "offlineMessage": "Some features may be unavailable. Your data will sync when you reconnect.",
+    "backOnline": "You're back online!",
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "confirm": "Confirm",
+    "search": "Search...",
+    "noResults": "No results found",
+    "viewAll": "View All",
+    "scrollDown": "Scroll Down"
+  },
+  "assistant": {
+    "title": "UFUQ Assistant",
+    "placeholder": "Ask about the camp...",
+    "greeting": "Hi! I can answer questions about UFUQ '26. What would you like to know?",
+    "thinking": "Thinking...",
+    "error": "I couldn't process that. Please try again or contact support.",
+    "noAnswer": "I don't have enough information to answer that. Please contact the organizers directly.",
+    "poweredBy": "Powered by AI — answers based on published event information only"
+  },
+  "pwa": {
+    "installTitle": "Install UFUQ '26",
+    "installMessage": "Add this app to your home screen for quick access and offline support.",
+    "install": "Install",
+    "dismiss": "Not now"
+  }
+}

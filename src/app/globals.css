@@ -1,0 +1,217 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/english/ClashDisplay-Extralight.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/english/ClashDisplay-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/english/ClashDisplay-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/english/ClashDisplay-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/english/ClashDisplay-Semibold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Clash Display';
+  src: url('/fonts/english/ClashDisplay-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DG Sahabah';
+  src: url('/fonts/arabic/dg-sahabah-light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DG Sahabah';
+  src: url('/fonts/arabic/dg-sahabah-regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'DG Sahabah';
+  src: url('/fonts/arabic/dg-sahabah-bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-clash: 'Clash Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-dg-sahabah: 'DG Sahabah', 'Amiri', 'Traditional Arabic', serif;
+  --font-arima: 'Arima', 'Manjari', 'Gayathri', sans-serif;
+
+  --bg-primary: #fbf9f5;
+  --bg-secondary: #f4efe6;
+  --bg-card: #ffffff;
+  --bg-card-hover: #fcfbfa;
+  --bg-elevated: #ffffff;
+  
+  --text-primary: #101d32;
+  --text-secondary: #4a5568;
+  --text-muted: #718096;
+  
+  --border-subtle: rgba(16, 29, 50, 0.08);
+  --border-strong: rgba(16, 29, 50, 0.16);
+  --border-gold: rgba(201, 164, 92, 0.35);
+
+  --brand-navy: #101d32;
+  --brand-teal: #527a70;
+  --brand-gold: #c9a45c;
+  --brand-gold-hover: #b8924b;
+  --brand-gold-light: #ecdcb9;
+}
+
+.dark {
+  --bg-primary: #080c14;
+  --bg-secondary: #0f1624;
+  --bg-card: #141c2c;
+  --bg-card-hover: #192438;
+  --bg-elevated: #1a253c;
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #8492a6;
+  
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-gold: rgba(201, 164, 92, 0.35);
+}
+
+html {
+  scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+/* RTL Typography adjustment */
+[dir="rtl"] {
+  font-family: var(--font-dg-sahabah), var(--font-clash), sans-serif;
+}
+
+[lang="ml"] {
+  font-family: var(--font-arima), var(--font-clash), sans-serif;
+}
+
+/* Custom scrollbar inspired by getartcraft.com */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(201, 164, 92, 0.4);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 164, 92, 0.7);
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--brand-gold);
+  outline-offset: 3px;
+}
+
+/* Reduced motion respect */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Glassmorphism helpers */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+}
+
+.dark .glass-panel {
+  background: rgba(20, 28, 44, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Gold gradient text */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #d4b577 0%, #c9a45c 50%, #9e7a35 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-teal-gradient {
+  background: linear-gradient(135deg, #74a297 0%, #527a70 50%, #35534c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Subtle glowing pattern */
+.bg-mesh-pattern {
+  background-image: radial-gradient(circle at 50% 0%, rgba(201, 164, 92, 0.12) 0%, transparent 60%),
+                    radial-gradient(circle at 100% 50%, rgba(82, 122, 112, 0.12) 0%, transparent 50%),
+                    radial-gradient(circle at 0% 100%, rgba(16, 29, 50, 0.08) 0%, transparent 50%);
+}
+
+.dark .bg-mesh-pattern {
+  background-image: radial-gradient(circle at 50% 0%, rgba(201, 164, 92, 0.15) 0%, transparent 60%),
+                    radial-gradient(circle at 100% 50%, rgba(82, 122, 112, 0.18) 0%, transparent 50%),
+                    radial-gradient(circle at 0% 100%, rgba(20, 28, 44, 0.8) 0%, transparent 60%);
+}

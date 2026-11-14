@@ -1,0 +1,18 @@
+{
+  "name": "UFUQ ’26 — A Transition & Leadership Camp",
+  "short_name": "UFUQ ’26",
+  "description": "Rooted in Ilm. Ready for the World. Week-long transition camp organized by Alathurpadi Dars Students Association (ADSA) for SUFFA Dars students.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080c14",
+  "theme_color": "#101d32",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/UFUQ-Logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
