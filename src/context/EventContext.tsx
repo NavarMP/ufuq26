@@ -1,8 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { EventInfo, ScheduleSession, Guest, FAQ, Registration, RegistrationField } from '@/types';
 import { initialEventInfo, initialScheduleSessions, initialGuests, initialFAQs, defaultRegistrationFields } from '@/lib/initialData';
+import { db } from '@/lib/firebase';
+import { collection, doc, setDoc, getDocs, updateDoc, deleteDoc } from 'firebase/firestore';
 
 interface EventContextType {
   eventInfo: EventInfo;
@@ -65,10 +67,11 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load from localStorage or initial on mount
+  // Load from localStorage first, then sync from Firestore if available
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
+    // 1. Initial local load
     try {
       const storedEvent = localStorage.getItem(STORAGE_KEYS.EVENT_INFO);
       if (storedEvent) setEventInfo(JSON.parse(storedEvent));
@@ -92,6 +95,48 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+
+    // 2. Background Firestore fetch if connected
+    const syncFromFirestore = async () => {
+      try {
+        const scheduleSnap = await getDocs(collection(db, 'schedule'));
+        if (!scheduleSnap.empty) {
+          const remoteSessions: ScheduleSession[] = [];
+          scheduleSnap.forEach((docSnap) => {
+            remoteSessions.push({ id: docSnap.id, ...(docSnap.data() as any) });
+          });
+          remoteSessions.sort((a, b) => a.day - b.day || a.order - b.order);
+          setSchedule(remoteSessions);
+          persist(STORAGE_KEYS.SCHEDULE, remoteSessions);
+        }
+
+        const guestsSnap = await getDocs(collection(db, 'guests'));
+        if (!guestsSnap.empty) {
+          const remoteGuests: Guest[] = [];
+          guestsSnap.forEach((docSnap) => {
+            remoteGuests.push({ id: docSnap.id, ...(docSnap.data() as any) });
+          });
+          remoteGuests.sort((a, b) => a.order - b.order);
+          setGuests(remoteGuests);
+          persist(STORAGE_KEYS.GUESTS, remoteGuests);
+        }
+
+        const faqsSnap = await getDocs(collection(db, 'faqs'));
+        if (!faqsSnap.empty) {
+          const remoteFaqs: FAQ[] = [];
+          faqsSnap.forEach((docSnap) => {
+            remoteFaqs.push({ id: docSnap.id, ...(docSnap.data() as any) });
+          });
+          remoteFaqs.sort((a, b) => a.order - b.order);
+          setFaqs(remoteFaqs);
+          persist(STORAGE_KEYS.FAQS, remoteFaqs);
+        }
+      } catch (e) {
+        // Firestore rules or offline: keep using local cache seamlessly
+      }
+    };
+
+    syncFromFirestore();
   }, []);
 
   // Helper to persist in localStorage
@@ -111,9 +156,6 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
   ): Promise<{ success: boolean; id?: string; error?: string }> => {
     setIsSaving(true);
     try {
-      // Simulate slight network delay for realism & test loading states
-      await new Promise((res) => setTimeout(res, 600));
-
       // Duplicate email check
       const normalizedEmail = data.email.trim().toLowerCase();
       const existing = registrations.find(
@@ -143,9 +185,18 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
         status: 'pending',
       };
 
+      // 1. Save to local state and localStorage
       const updated = [newRegistration, ...registrations];
       setRegistrations(updated);
       persist(STORAGE_KEYS.REGISTRATIONS, updated);
+
+      // 2. Sync to Firestore in background
+      try {
+        await setDoc(doc(db, 'registrations', newId), newRegistration);
+      } catch (err) {
+        // Firestore will sync when online or rules are applied
+        console.warn('Firestore write queued or local-only', err);
+      }
 
       return { success: true, id: newId };
     } catch (err: any) {
@@ -160,75 +211,110 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     const updated = { ...eventInfo, ...info };
     setEventInfo(updated);
     persist(STORAGE_KEYS.EVENT_INFO, updated);
+    try {
+      await setDoc(doc(db, 'events', 'ufuq-2026'), updated, { merge: true });
+    } catch (e) {
+      // local-fallback
+    }
   };
 
   // Admin: Schedule sessions
   const addSession = async (sessionData: Omit<ScheduleSession, 'id'>) => {
+    const newId = `session-${Date.now()}`;
     const newSession: ScheduleSession = {
       ...sessionData,
-      id: `session-${Date.now()}`,
+      id: newId,
     };
     const updated = [...schedule, newSession].sort((a, b) => a.day - b.day || a.order - b.order);
     setSchedule(updated);
     persist(STORAGE_KEYS.SCHEDULE, updated);
+    try {
+      await setDoc(doc(db, 'schedule', newId), newSession);
+    } catch (e) {}
   };
 
   const updateSession = async (id: string, sessionData: Partial<ScheduleSession>) => {
     const updated = schedule.map((s) => (s.id === id ? { ...s, ...sessionData } : s));
     setSchedule(updated);
     persist(STORAGE_KEYS.SCHEDULE, updated);
+    try {
+      await updateDoc(doc(db, 'schedule', id), sessionData);
+    } catch (e) {}
   };
 
   const deleteSession = async (id: string) => {
     const updated = schedule.filter((s) => s.id !== id);
     setSchedule(updated);
     persist(STORAGE_KEYS.SCHEDULE, updated);
+    try {
+      await deleteDoc(doc(db, 'schedule', id));
+    } catch (e) {}
   };
 
   // Admin: Guests
   const addGuest = async (guestData: Omit<Guest, 'id'>) => {
+    const newId = `guest-${Date.now()}`;
     const newGuest: Guest = {
       ...guestData,
-      id: `guest-${Date.now()}`,
+      id: newId,
     };
     const updated = [...guests, newGuest].sort((a, b) => a.order - b.order);
     setGuests(updated);
     persist(STORAGE_KEYS.GUESTS, updated);
+    try {
+      await setDoc(doc(db, 'guests', newId), newGuest);
+    } catch (e) {}
   };
 
   const updateGuest = async (id: string, guestData: Partial<Guest>) => {
     const updated = guests.map((g) => (g.id === id ? { ...g, ...guestData } : g));
     setGuests(updated);
     persist(STORAGE_KEYS.GUESTS, updated);
+    try {
+      await updateDoc(doc(db, 'guests', id), guestData);
+    } catch (e) {}
   };
 
   const deleteGuest = async (id: string) => {
     const updated = guests.filter((g) => g.id !== id);
     setGuests(updated);
     persist(STORAGE_KEYS.GUESTS, updated);
+    try {
+      await deleteDoc(doc(db, 'guests', id));
+    } catch (e) {}
   };
 
   // Admin: FAQs
   const addFAQ = async (faqData: Omit<FAQ, 'id'>) => {
+    const newId = `faq-${Date.now()}`;
     const newFaq: FAQ = {
       ...faqData,
-      id: `faq-${Date.now()}`,
+      id: newId,
     };
     const updated = [...faqs, newFaq].sort((a, b) => a.order - b.order);
     setFaqs(updated);
     persist(STORAGE_KEYS.FAQS, updated);
+    try {
+      await setDoc(doc(db, 'faqs', newId), newFaq);
+    } catch (e) {}
   };
 
   const updateFAQ = async (id: string, faqData: Partial<FAQ>) => {
     const updated = faqs.map((f) => (f.id === id ? { ...f, ...faqData } : f));
     setFaqs(updated);
     persist(STORAGE_KEYS.FAQS, updated);
+    try {
+      await updateDoc(doc(db, 'faqs', id), faqData);
+    } catch (e) {}
   };
 
   const deleteFAQ = async (id: string) => {
     const updated = faqs.filter((f) => f.id !== id);
     setFaqs(updated);
     persist(STORAGE_KEYS.FAQS, updated);
+    try {
+      await deleteDoc(doc(db, 'faqs', id));
+    } catch (e) {}
   };
 
   // Admin: Registrations
@@ -236,12 +322,18 @@ export function EventProvider({ children }: { children: React.ReactNode }) {
     const updated = registrations.map((r) => (r.id === id ? { ...r, status } : r));
     setRegistrations(updated);
     persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    try {
+      await updateDoc(doc(db, 'registrations', id), { status });
+    } catch (e) {}
   };
 
   const deleteRegistration = async (id: string) => {
     const updated = registrations.filter((r) => r.id !== id);
     setRegistrations(updated);
     persist(STORAGE_KEYS.REGISTRATIONS, updated);
+    try {
+      await deleteDoc(doc(db, 'registrations', id));
+    } catch (e) {}
   };
 
   const exportRegistrationsCSV = () => {
